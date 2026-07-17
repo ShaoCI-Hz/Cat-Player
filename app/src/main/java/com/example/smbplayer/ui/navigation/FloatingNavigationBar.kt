@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -36,67 +35,64 @@ fun FloatingNavigationBar(
     tabs: List<NavTab>,
     modifier: Modifier = Modifier
 ) {
-    val containerColor = MaterialTheme.colorScheme.surface
-    val shape = RoundedCornerShape(28.dp)
+    val pillShape = RoundedCornerShape(40.dp)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .shadow(12.dp, shape)
-            .clip(shape)
-            .background(containerColor)
+            .shadow(8.dp, pillShape)
+            .clip(pillShape)
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 6.dp, vertical = 6.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             tabs.forEachIndexed { index, tab ->
                 val isSelected = index == selectedIndex
 
-                val indicatorColor by animateColorAsState(
+                val bg by animateColorAsState(
                     if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                    else containerColor,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-                    label = "indicator"
+                    else MaterialTheme.colorScheme.surface,
+                    animationSpec = spring(dampingRatio = 0.65f, stiffness = 420f),
+                    label = "bg"
                 )
 
                 val iconScale by animateFloatAsState(
-                    if (isSelected) 1.15f else 1f,
-                    animationSpec = spring(dampingRatio = 0.35f, stiffness = 500f),
-                    label = "iconScale"
+                    if (isSelected) 1.1f else 1f,
+                    animationSpec = spring(dampingRatio = 0.4f, stiffness = 500f),
+                    label = "scale"
                 )
 
-                val iconColor by animateColorAsState(
+                val iconTint by animateColorAsState(
                     if (isSelected) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-                    label = "iconColor"
+                    animationSpec = spring(dampingRatio = 0.65f, stiffness = 420f),
+                    label = "tint"
                 )
 
                 val textColor by animateColorAsState(
                     if (isSelected) MaterialTheme.colorScheme.onBackground
                     else MaterialTheme.colorScheme.onSurfaceVariant,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-                    label = "textColor"
+                    animationSpec = spring(dampingRatio = 0.65f, stiffness = 420f),
+                    label = "text"
                 )
 
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(indicatorColor)
+                        .clip(pillShape)
+                        .background(bg)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             role = Role.Tab,
                             onClick = { onTabSelected(index) }
                         )
-                        .padding(vertical = 8.dp, horizontal = 4.dp),
+                        .padding(vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -106,7 +102,7 @@ fun FloatingNavigationBar(
                         modifier = Modifier
                             .size(22.dp)
                             .scale(iconScale),
-                        tint = iconColor,
+                        tint = iconTint,
                     )
                     Spacer(Modifier.height(3.dp))
                     Text(
