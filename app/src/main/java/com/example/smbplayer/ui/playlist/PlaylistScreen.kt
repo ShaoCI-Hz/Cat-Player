@@ -24,6 +24,7 @@ fun PlaylistScreen(
     playerViewModel: PlayerViewModel,
     modifier: Modifier = Modifier
 ) {
+    var showClearDialog by remember { mutableStateOf(false) }
     val playlist by playerViewModel.playlist.collectAsState()
     val currentIndex by playerViewModel.currentIndex.collectAsState()
 
@@ -142,5 +143,6 @@ fun PlaylistScreen(
                 }
             }
         }
+        if (showClearDialog) { AlertDialog(onDismissRequest = { showClearDialog = false }, title = { Text("清空播放队列") }, text = { Text("确定要清空当前播放队列吗？") }, confirmButton = { TextButton(onClick = { playerViewModel.clearPlaylist(); showClearDialog = false }) { Text("确定") } }, dismissButton = { TextButton(onClick = { showClearDialog = false }) { Text("取消") } }) }
     }
 }

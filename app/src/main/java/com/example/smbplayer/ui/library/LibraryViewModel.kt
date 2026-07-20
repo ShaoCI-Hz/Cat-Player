@@ -3,6 +3,7 @@ package com.example.smbplayer.ui.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smbplayer.data.local.AlbumEntry
+import com.example.smbplayer.data.local.ArtistEntry
 import com.example.smbplayer.data.local.LocalMusicRepository
 import com.example.smbplayer.data.local.LocalTrack
 import com.example.smbplayer.data.smb.ConnectionState
@@ -31,10 +32,10 @@ class LibraryViewModel @Inject constructor(
     private val _localTracks = MutableStateFlow<List<LocalTrack>>(emptyList())
     val localTracks: StateFlow<List<LocalTrack>> = _localTracks.asStateFlow()
 
+    private val _artists = MutableStateFlow<List<com.example.smbplayer.data.local.ArtistEntry>>(emptyList())
     private val _albums = MutableStateFlow<List<AlbumEntry>>(emptyList())
     val albums: StateFlow<List<AlbumEntry>> = _albums.asStateFlow()
 
-    private val _artists = MutableStateFlow<List<ArtistEntry>>(emptyList())
     val artists: StateFlow<List<ArtistEntry>> = _artists.asStateFlow()
     val totalArtistCount get() = _artists.value.size
     val totalAlbumCount get() = _albums.value.size
@@ -66,13 +67,8 @@ class LibraryViewModel @Inject constructor(
                     .map { (name, group) -> AlbumEntry(name, group.first().artist, group) }
                     .sortedBy { it.name }
                 _artists.value = tracks
-                    .groupBy { it.artist.ifEmpty { "未知艺术家" } }
-                    .map { (artist, tracksByArtist) ->
-                        val albumsByArtist = tracksByArtist
-                            .groupBy { it.album.ifEmpty { "未知专辑" } }
-                            .map { (album, tracksByAlbum) -> AlbumEntry(album, artist, tracksByAlbum) }
-                        ArtistEntry(artist, tracksByArtist.size, albumsByArtist)
-                    }
+                    .groupBy { it.artist.ifEmpty { "Unknown" } }
+                    .map { (name, group) -> com.example.smbplayer.data.local.ArtistEntry(name, group) }
                     .sortedBy { it.name }
             } finally { _isLoading.value = false }
         }

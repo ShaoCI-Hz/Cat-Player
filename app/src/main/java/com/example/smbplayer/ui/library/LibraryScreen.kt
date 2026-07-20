@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -59,6 +60,8 @@ fun LibraryScreen(
         if (!hasPermission) permLauncher.launch(Manifest.permission.READ_MEDIA_AUDIO) else viewModel.loadLocalTracks()
     }
     var searchQuery by remember { mutableStateOf("") }
+    var browseTab by remember { mutableIntStateOf(0) }
+    var selectedAlbum by remember { mutableStateOf<AlbumEntry?>(null) }
     val filteredTracks = remember(localTracks, searchQuery) { localTracks.filter { searchQuery.isEmpty() || it.title.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true) } }
     val filteredAlbums = remember(albums, searchQuery) { albums.filter { searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true) } }
     val filteredSmb = smbEntries.filter { searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true) }
@@ -80,7 +83,7 @@ fun LibraryScreen(
         )
         when (showTab) {
             "songs" -> SongList(filteredTracks, isLoading, hasPermission, permLauncher, viewModel, playerViewModel, playHistory, Modifier.weight(1f))
-            "albums" -> AlbumGrid(filteredAlbums, isLoading, playerViewModel, Modifier.weight(1f))
+            "albums" -> if (selectedAlbum != null) AlbumDetailScreen(selectedAlbum!!, playerViewModel, onBack = { selectedAlbum = null }, Modifier.weight(1f)) else AlbumGrid(filteredAlbums, isLoading, playerViewModel, Modifier.weight(1f), { selectedAlbum = it })
             "smb" -> SmbBrowser(filteredSmb, breadcrumbs, isSMBConnected, isLoading, viewModel, playerViewModel, Modifier.weight(1f))
         }
     }
@@ -204,6 +207,37 @@ private fun SongList(
             }
         }
 
+        // Today''s Picks
+        item {
+            Text("今日推荐", style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 10.dp))
+        }
+        if (tracks.isNotEmpty()) {
+            item {
+                val picks = remember { tracks.shuffled(java.util.Random(0)).take(10) }
+                LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(picks, key = { it.id }) { track ->
+                        Card(Modifier.width(130.dp).clickable {
+                            playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString()));
+                        }, shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                            Column(Modifier.padding(10.dp)) {
+                                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) {
+                                    val artUri = track.albumArtUri()
+                                    if (artUri != null) AsyncImage(model = artUri, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                    else Icon(Icons.Filled.MusicNote, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                Text(track.title, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onBackground)
+                                Text(track.artist, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // === 全部歌曲 (始终显示) ===
         item {
             Text("全部歌曲 (${tracks.size}首)", style = MaterialTheme.typography.titleLarge,
@@ -214,9 +248,10 @@ private fun SongList(
         // === 歌曲列表 ===
         items(tracks, key = { it.id }) { track ->
             val isCurrent = playerViewModel.currentTrack.value?.localUri == track.uri.toString()
-            Row(Modifier.fillMaxWidth().animateItem().clickable {
+            var showMenu by remember { mutableStateOf(false) }
+            Row(Modifier.fillMaxWidth().animateItem().combinedClickable(onClick = {
                 playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString()))
-            }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            }, onLongClick = { showMenu = true }).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (isCurrent) {
                     Box(Modifier.width(3.dp).height(36.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)))
                     Spacer(Modifier.width(8.dp))
@@ -233,18 +268,23 @@ private fun SongList(
                 }
                 Text(fmtDur(track.durationMs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                DropdownMenuItem(text = { Text("播放") }, onClick = { playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString())); showMenu = false })
+                DropdownMenuItem(text = { Text("添加到队列") }, onClick = { showMenu = false })
+            }
         }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun AlbumGrid(albums: List<AlbumEntry>, isLoading: Boolean, playerViewModel: PlayerViewModel, modifier: Modifier) {
+private fun AlbumGrid(albums: List<AlbumEntry>, isLoading: Boolean, playerViewModel: PlayerViewModel, modifier: Modifier, onAlbumClick: (AlbumEntry) -> Unit = {}) {
     if (isLoading) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
     if (albums.isEmpty()) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("没有专辑") }; return }
     LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items(albums, key = { "${it.artist}_${it.name}" }) { album ->
             Card(Modifier.fillMaxWidth().animateItem().clickable {
+                onAlbumClick(album)
                 val list = album.tracks.map { t -> TrackInfo(TrackSource.LOCAL, t.title, t.artist, t.album, t.durationMs, t.uri.toString()) }
                 album.tracks.firstOrNull()?.let { playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, it.title, it.artist, it.album, it.durationMs, it.uri.toString()), list, 0) }
             }, shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {

@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,7 +49,16 @@ fun PlayerScreen(
     val isPlaying = playerState is PlayerState.Playing
     val favoritePaths by favoritesViewModel.favoritePaths.collectAsState()
     val trackPath = (track?.smbPath ?: track?.localUri).orEmpty()
+    var showLyrics by remember { mutableStateOf(false) }
     val isFavorite = trackPath.isNotEmpty() && trackPath in favoritePaths
+
+    if (showLyrics) {
+        LyricFullScreen(lyrics = viewModel.lyrics.collectAsState().value, currentPositionMs = viewModel.currentPosition.value,
+            isPlaying = isPlaying,
+            onTogglePlay = { viewModel.togglePlay() }, onNext = { viewModel.next() }, onPrevious = { viewModel.prev() },
+            onDismiss = { showLyrics = false })
+        return
+    }
     val bgColor = remember(coverBytes) { PaletteUtil.extractDarkMuted(coverBytes, Color(0xFF0A0A0A)) }
     val playBtnScale by animateFloatAsState(if (isPlaying) 0.93f else 1f, spring(dampingRatio = 0.4f, stiffness = 600f), label = "playBtn")
 
@@ -57,6 +68,7 @@ fun PlayerScreen(
                 IconButton(onClick = onBack) { Icon(Icons.Filled.KeyboardArrowDown, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onBackground) }
             }, actions = {
                 val ctx = LocalContext.current; val t = track
+                if (viewModel.lyrics.collectAsState().value.isNotEmpty()) IconButton(onClick = { showLyrics = true }) { Icon(Icons.Filled.LibraryMusic, "歌词", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
                 IconButton(onClick = { onOpenPlaylist() }) { Icon(Icons.AutoMirrored.Filled.QueueMusic, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
                 if (t != null) IconButton(onClick = {
                     ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "${t.title} - ${t.artist}") }, "Share"))

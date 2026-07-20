@@ -2,6 +2,7 @@ package com.example.smbplayer.ui.favorites
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -65,7 +66,8 @@ fun FavoritesScreen(
                     val fileName = path.substringAfterLast('/')
                     val dashIdx = fileName.indexOf(" - "); val title = if (dashIdx > 0) fileName.substring(dashIdx + 3).substringBeforeLast('.') else fileName.substringBeforeLast('.'); val guessArtist = if (dashIdx > 0) fileName.substring(0, dashIdx) else ""
                     val displayPath = if (isLocal) "本地文件" else path
-                    Row(
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp), shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
@@ -111,7 +113,7 @@ fun FavoritesScreen(
                             )
                         }
                     }
-                }
+                } }
             }
         }
     }

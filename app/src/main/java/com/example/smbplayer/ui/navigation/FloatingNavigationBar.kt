@@ -20,6 +20,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +37,7 @@ fun FloatingNavigationBar(
     tabs: List<NavTab>,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     val pillShape = RoundedCornerShape(40.dp)
 
     Box(
@@ -90,7 +93,7 @@ fun FloatingNavigationBar(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             role = Role.Tab,
-                            onClick = { onTabSelected(index) }
+                            onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onTabSelected(index) }
                         )
                         .padding(vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,

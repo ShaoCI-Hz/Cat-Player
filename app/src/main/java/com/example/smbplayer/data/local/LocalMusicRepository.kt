@@ -29,6 +29,8 @@ data class LocalTrack(
 
 data class AlbumEntry(val name: String, val artist: String, val tracks: List<LocalTrack>)
 
+data class ArtistEntry(val name: String, val tracks: List<LocalTrack>)
+
 @Singleton
 class LocalMusicRepository @Inject constructor(
     @ApplicationContext private val context: Context

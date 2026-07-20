@@ -48,6 +48,7 @@ fun SmbPlayerAppContent() {
     var showSMBConnect by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showPlaylist by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
     var browseSubTab by remember { mutableIntStateOf(0) } // 0=albums, 1=SMB
 
     if (showPlayerScreen && playerState !is PlayerState.Idle && playerState !is PlayerState.Error) {
