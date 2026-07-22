@@ -7,8 +7,10 @@ import android.net.Uri
 import android.provider.MediaStore
 import com.example.smbplayer.data.player.TrackInfo
 import com.example.smbplayer.data.player.TrackSource
+import com.example.smbplayer.data.settings.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,18 +35,24 @@ data class ArtistEntry(val name: String, val tracks: List<LocalTrack>)
 
 @Singleton
 class LocalMusicRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val settingsRepository: SettingsRepository
 ) {
     companion object {
-        val EXCLUDED_FOLDERS = setOf(
+        val DEFAULT_EXCLUDED_FOLDERS = setOf(
             "Ringtones", "Notifications", "Alarms", "Podcasts", "Audiobooks", "Recordings"
         )
-        const val MIN_DURATION_MS = 60_000L
     }
 
     suspend fun loadAllTracks(): List<LocalTrack> = withContext(Dispatchers.IO) {
         val tracks = mutableListOf<LocalTrack>()
         val resolver: ContentResolver = context.contentResolver
+
+        // Read configurable settings
+        val customExcluded = settingsRepository.excludedFolders.first()
+        val minDurationSec = settingsRepository.minDurationSeconds.first()
+        val allExcluded = DEFAULT_EXCLUDED_FOLDERS + customExcluded
+        val minDurationMs = (minDurationSec * 1000L).coerceAtLeast(1000L)
 
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -58,7 +66,7 @@ class LocalMusicRepository @Inject constructor(
             MediaStore.Audio.Media.ALBUM_ID
         )
 
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= $MIN_DURATION_MS"
+        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= $minDurationMs"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
         resolver.query(
@@ -80,8 +88,8 @@ class LocalMusicRepository @Inject constructor(
 
             while (cursor.moveToNext()) {
                 val filePath = cursor.getString(dataColumn) ?: ""
-                // Skip system non-music folders
-                if (EXCLUDED_FOLDERS.any { "/$it/" in filePath || filePath.contains("/$it/", ignoreCase = true) }) continue
+                // Skip excluded folders
+                if (allExcluded.any { "/$it/" in filePath || filePath.contains("/$it/", ignoreCase = true) }) continue
 
                 val id = cursor.getLong(idColumn)
                 val uri = Uri.withAppendedPath(

@@ -5,6 +5,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,8 +56,9 @@ fun PlayerScreen(
     val isFavorite = trackPath.isNotEmpty() && trackPath in favoritePaths
 
     if (showLyrics) {
+        val coverColors = remember(coverBytes) { com.example.smbplayer.ui.theme.PaletteUtil.extractColors(coverBytes) }
         LyricFullScreen(lyrics = viewModel.lyrics.collectAsState().value, currentPositionMs = viewModel.currentPosition.value,
-            isPlaying = isPlaying,
+            isPlaying = isPlaying, coverColors = coverColors,
             onTogglePlay = { viewModel.togglePlay() }, onNext = { viewModel.next() }, onPrevious = { viewModel.prev() },
             onDismiss = { showLyrics = false })
         return
@@ -78,7 +82,25 @@ fun PlayerScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).background(Brush.verticalGradient(listOf(bgColor.copy(alpha = 0.6f), Color(0xFF0A0A0A)))).padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(12.dp))
-            Box(Modifier.size(280.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant), Alignment.Center) {
+            // Cover art with gesture support (B2)
+            var volumeAdjust by remember { mutableFloatStateOf(0f) }
+            Box(
+                Modifier.size(280.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures { _, dragAmount ->
+                            if (dragAmount > 50) viewModel.prev() // Swipe right = previous
+                            else if (dragAmount < -50) viewModel.next() // Swipe left = next
+                        }
+                    }
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dragAmount ->
+                            volumeAdjust = (-dragAmount / 500f).coerceIn(-0.1f, 0.1f)
+                            val newVol = (viewModel.volume.value + volumeAdjust).coerceIn(0f, 1f)
+                            viewModel.setVolume(newVol)
+                        }
+                    },
+                Alignment.Center
+            ) {
                 if (coverBytes != null) AsyncImage(model = coverBytes, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 else Icon(Icons.Filled.MusicNote, null, Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -102,6 +124,16 @@ fun PlayerScreen(
             Spacer(Modifier.height(8.dp))
             val lyrics by viewModel.lyrics.collectAsState()
             if (lyrics.isNotEmpty()) LyricView(lyrics = lyrics, currentPositionMs = viewModel.currentPosition.value)
+            // Audio Visualizer (B6)
+            if (isPlaying) {
+                Spacer(Modifier.height(8.dp))
+                AnimatedVisualizer(
+                    isPlaying = isPlaying,
+                    barCount = 24,
+                    barColor = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { viewModel.setPlayMode(if (playMode == PlayMode.Random) PlayMode.Sequential else PlayMode.Random) }) { Icon(Icons.Filled.Shuffle, null, Modifier.size(20.dp), tint = if (playMode == PlayMode.Random) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }

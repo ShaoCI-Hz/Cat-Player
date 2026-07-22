@@ -14,8 +14,8 @@ android {
         applicationId = "com.example.smbplayer"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 5
+        versionName = "3.0.0"
     }
 
     buildTypes {
@@ -82,4 +82,18 @@ dependencies {
 
     // JAudioTagger for ID3 tag parsing
     implementation(libs.jaudiotagger)
+
+    // Glance (Widget)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
+
+    // SSHJ (SFTP)
+    implementation(libs.sshj) {
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk15on")
+        exclude(group = "org.bouncycastle", module = "bcpkix-jdk15on")
+        exclude(group = "org.bouncycastle", module = "bctls-jdk15on")
+    }
+
+    // OkHttp (WebDAV)
+    implementation(libs.okhttp)
 }

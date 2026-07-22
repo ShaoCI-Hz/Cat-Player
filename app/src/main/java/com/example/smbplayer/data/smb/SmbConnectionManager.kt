@@ -6,6 +6,7 @@ import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.connection.Connection
 import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
+import com.hierynomus.smbj.share.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -18,10 +19,29 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withTimeout
 import java.io.InputStream
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/**
+ * AutoCloseable wrapper that closes both the SMB File and its InputStream.
+ * Prevents server-side file handle leaks.
+ */
+class SmbFileStream(
+    private val file: File,
+    private val stream: InputStream
+) : InputStream() {
+    override fun read(): Int = stream.read()
+    override fun read(b: ByteArray): Int = stream.read(b)
+    override fun read(b: ByteArray, off: Int, len: Int): Int = stream.read(b, off, len)
+    override fun available(): Int = stream.available()
+    override fun close() {
+        try { stream.close() } catch (_: Exception) {}
+        try { file.close() } catch (_: Exception) {}
+    }
+}
 
 @Singleton
 class SmbConnectionManager @Inject constructor() {
@@ -29,17 +49,22 @@ class SmbConnectionManager @Inject constructor() {
     private val _connectionState = MutableStateFlow(ConnectionState.Disconnected)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
-    private var client: SMBClient? = null
-    private var connection: Connection? = null
-    private var session: Session? = null
-    private var diskShare: DiskShare? = null
+    @Volatile private var client: SMBClient? = null
+    @Volatile private var connection: Connection? = null
+    @Volatile private var session: Session? = null
+    @Volatile private var diskShare: DiskShare? = null
+
+    // Generation counter: increments on each reconnect so active streams can detect stale connections
+    private val connectionGeneration = AtomicInteger(0)
 
     val activeShare: DiskShare?
         get() = if (_connectionState.value == ConnectionState.Connected) diskShare else null
 
+    fun currentGeneration(): Int = connectionGeneration.get()
+
     private var healthScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var lastConfig: SmbConfig? = null
-    private var healthCheckRunning = false
+    @Volatile private var lastConfig: SmbConfig? = null
+    private val healthCheckRunning = AtomicBoolean(false)
 
     suspend fun connect(config: SmbConfig): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -61,22 +86,21 @@ class SmbConnectionManager @Inject constructor() {
                     ?: throw IllegalStateException("共享 ${config.shareName} 不是磁盘共享类型")
             }
 
+            connectionGeneration.incrementAndGet()
             _connectionState.value = ConnectionState.Connected
             lastConfig = config
             startHealthCheck()
             Result.success(Unit)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             disconnect(setState = false)
             _connectionState.value = ConnectionState.Error
             Result.failure(e)
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            disconnect(setState = false)
-            _connectionState.value = ConnectionState.Error
-            throw e
         }
     }
 
     suspend fun disconnect(setState: Boolean = true) = withContext(Dispatchers.IO) {
+        connectionGeneration.incrementAndGet() // invalidate any active streams
         try { diskShare?.close() } catch (_: Exception) {}
         try { session?.close() } catch (_: Exception) {}
         try { connection?.close() } catch (_: Exception) {}
@@ -89,17 +113,18 @@ class SmbConnectionManager @Inject constructor() {
         if (setState) _connectionState.value = ConnectionState.Disconnected
     }
 
-    fun openFileStream(path: String): InputStream {
+    /**
+     * Opens an SMB file stream wrapped in SmbFileStream (AutoCloseable).
+     * The wrapper ensures both the File handle and InputStream are closed together.
+     */
+    fun openFileStream(path: String): SmbFileStream {
         val share = diskShare ?: throw SmbNotConnectedException()
         val file = share.openFile(
             path,
             setOf(AccessMask.GENERIC_READ),
-            null,
-            null,
-            null,
-            null
+            null, null, null, null
         )
-        return file.inputStream
+        return SmbFileStream(file, file.inputStream)
     }
 
     fun getFileSize(path: String): Long {
@@ -109,20 +134,24 @@ class SmbConnectionManager @Inject constructor() {
     }
 
     private fun startHealthCheck() {
-        if (healthCheckRunning) return
-        healthCheckRunning = true
-        if (healthScope.coroutineContext[kotlinx.coroutines.Job]?.isActive != true) healthScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        if (healthCheckRunning.getAndSet(true)) return
+        if (healthScope.coroutineContext[Job]?.isActive != true) {
+            healthScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        }
         healthScope.launch {
-            while (healthCheckRunning) {
+            while (healthCheckRunning.get()) {
                 delay(30_000)
                 try {
                     val alive = diskShare?.folderExists(".") ?: false
                     if (!alive) {
                         _connectionState.value = ConnectionState.Error
+                        // Exponential-ish backoff: wait extra before reconnecting
+                        delay(10_000)
                         lastConfig?.let { connect(it) }
                     }
                 } catch (_: Exception) {
                     _connectionState.value = ConnectionState.Error
+                    delay(10_000)
                     lastConfig?.let { connect(it) }
                 }
             }
@@ -130,7 +159,7 @@ class SmbConnectionManager @Inject constructor() {
     }
 
     fun stopHealthCheck() {
-        healthCheckRunning = false
+        healthCheckRunning.set(false)
         healthScope.cancel()
         lastConfig = null
     }

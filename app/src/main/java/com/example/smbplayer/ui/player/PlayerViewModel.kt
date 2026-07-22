@@ -7,6 +7,7 @@ import com.example.smbplayer.data.player.PlayMode
 import com.example.smbplayer.data.player.PlayerRepository
 import com.example.smbplayer.data.player.PlayerState
 import com.example.smbplayer.data.player.TrackInfo
+
 import com.example.smbplayer.data.settings.SettingsRepository
 import com.example.smbplayer.domain.ManagePlaylistUseCase
 import com.example.smbplayer.domain.PlayAudioUseCase
@@ -35,6 +36,8 @@ class PlayerViewModel @Inject constructor(
 
     private val _currentTrack = MutableStateFlow<TrackInfo?>(null)
     val currentTrack: StateFlow<TrackInfo?> = _currentTrack.asStateFlow()
+
+    private var playJob: kotlinx.coroutines.Job? = null
 
     private val _playlist = MutableStateFlow<List<TrackInfo>>(emptyList())
     val playlist: StateFlow<List<TrackInfo>> = _playlist.asStateFlow()
@@ -110,6 +113,18 @@ class PlayerViewModel @Inject constructor(
                 _lyrics.value = lines
             }
         }
+        // Listen for gapless track transitions from ExoPlayer
+        viewModelScope.launch {
+            playerRepository.mediaItemTransition.collect { newIndex ->
+                val track = playerRepository.getTrackAt(newIndex)
+                if (track != null) {
+                    _currentIndex.value = newIndex
+                    _currentTrack.value = track
+                    // Fetch metadata in background for the new track
+                    fetchMetadataForTrack(track)
+                }
+            }
+        }
         // Restore last playback state
         viewModelScope.launch {
             val savedList = settingsRepository.savedPlaylist.first()
@@ -143,24 +158,61 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Play a single track or a track within a playlist.
+     * If playlist is provided with multiple tracks, uses gapless playback mode.
+     */
     fun playTrack(track: TrackInfo, playlist: List<TrackInfo>? = null, index: Int = -1) {
-        if (playlist != null) _playlist.value = playlist
-        if (index >= 0) _currentIndex.value = index
-        else {
-            _playlist.value = listOf(track)
-            _currentIndex.value = 0
-        }
+        val effectivePlaylist = playlist ?: listOf(track)
+        val effectiveIndex = if (index >= 0) index else 0
+
+        _playlist.value = effectivePlaylist
+        _currentIndex.value = effectiveIndex
         _currentTrack.value = track
+
         // Add to play history (max 100)
+        addToHistory(track)
+
+        // Track play stats
+        val trackId = track.localUri ?: track.smbPath
+        viewModelScope.launch { settingsRepository.incrementPlayCount(trackId) }
+
+        // Clear lyrics for new track
+        _lyrics.value = emptyList()
+
+        playJob?.cancel()
+        playJob = viewModelScope.launch {
+            if (effectivePlaylist.size > 1) {
+                // Gapless playlist mode: prepare all tracks at once
+                playerRepository.preparePlaylist(effectivePlaylist, effectiveIndex)
+                playerRepository.play()
+            } else {
+                // Single track mode
+                playAudioUseCase.play(track)
+            }
+            // Fetch metadata for the current track
+            fetchMetadataForTrack(track)
+        }
+    }
+
+    /**
+     * Fetch metadata (cover art, lyrics) for a track in the background.
+     */
+    private fun fetchMetadataForTrack(track: TrackInfo) {
+        viewModelScope.launch {
+            try {
+                playAudioUseCase.fetchMetadata(track)
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun addToHistory(track: TrackInfo) {
         val history = _playHistory.value.toMutableList()
         history.removeAll { it.smbPath == track.smbPath && it.localUri == track.localUri }
         history.add(0, track)
         if (history.size > 100) history.removeAt(history.lastIndex)
         _playHistory.value = history
         viewModelScope.launch { settingsRepository.savePlayHistory(_playHistory.value) }
-        viewModelScope.launch {
-            playAudioUseCase.play(track)
-        }
     }
 
     fun togglePlay() {
@@ -174,6 +226,14 @@ class PlayerViewModel @Inject constructor(
     fun next() {
         val list = _playlist.value
         if (list.isEmpty()) return
+
+        // If we have a playlist loaded in ExoPlayer, use native navigation
+        if (playerRepository.hasPlaylist()) {
+            playerRepository.seekToNext()
+            return
+        }
+
+        // Fallback: manual index calculation
         val nextIdx = managePlaylistUseCase.getNextIndex(
             _currentIndex.value, list.size, _playMode.value
         )
@@ -185,6 +245,14 @@ class PlayerViewModel @Inject constructor(
     fun prev() {
         val list = _playlist.value
         if (list.isEmpty()) return
+
+        // If we have a playlist loaded in ExoPlayer, use native navigation
+        if (playerRepository.hasPlaylist()) {
+            playerRepository.seekToPrevious()
+            return
+        }
+
+        // Fallback: manual index calculation
         val prevIdx = managePlaylistUseCase.getPrevIndex(
             _currentIndex.value, list.size, _playMode.value
         )

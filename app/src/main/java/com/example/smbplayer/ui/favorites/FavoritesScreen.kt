@@ -11,7 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.AsyncImage
 import androidx.compose.ui.unit.dp
 import com.example.smbplayer.data.player.TrackInfo
 import com.example.smbplayer.data.player.TrackSource
@@ -59,14 +61,16 @@ fun FavoritesScreen(
                 }
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
+            Button(onClick = { /* TODO: play all favorites */ }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) { Icon(Icons.Filled.PlayArrow, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("全部播放") }
+            LazyColumn(Modifier.fillMaxSize()) {
                 items(favoritePaths, key = { it }) { path ->
                     val isLocal = path.startsWith("content://")
                     val source = if (isLocal) TrackSource.LOCAL else TrackSource.SMB
                     val fileName = path.substringAfterLast('/')
                     val dashIdx = fileName.indexOf(" - "); val title = if (dashIdx > 0) fileName.substring(dashIdx + 3).substringBeforeLast('.') else fileName.substringBeforeLast('.'); val guessArtist = if (dashIdx > 0) fileName.substring(0, dashIdx) else ""
                     val displayPath = if (isLocal) "本地文件" else path
-                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp), shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -116,5 +120,6 @@ fun FavoritesScreen(
                 } }
             }
         }
+    }
     }
 }

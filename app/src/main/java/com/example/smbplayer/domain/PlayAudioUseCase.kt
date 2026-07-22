@@ -31,15 +31,7 @@ class PlayAudioUseCase @Inject constructor(
             TrackSource.LOCAL -> {
                 playerRepository.prepare(track)
                 playerRepository.play()
-                try {
-                    val metadata = metadataExtractor.extractFromUri(track.localUri ?: "")
-                    _metadataUpdates.value = metadata
-                    // Comprehensive lyrics search: embedded ID3 + MMR + .lrc
-                    val lyrics = metadataExtractor.findLyrics(track.localUri ?: "")
-                    if (lyrics != null) {
-                        _lyricsUpdates.value = com.example.smbplayer.data.lyrics.LyricParser.parse(lyrics)
-                    }
-                } catch (_: Exception) {}
+                fetchMetadata(track)
             }
             TrackSource.SMB -> {
                 val actualSize = if (track.fileSize > 0) track.fileSize
@@ -60,10 +52,35 @@ class PlayAudioUseCase @Inject constructor(
                 playerRepository.play()
 
                 // 后取：后台下载元数据，播放器已先出声
-                val metadata = metadataExtractor.extract(track.smbPath, actualSize)
-                _metadataUpdates.value = metadata
+                fetchMetadata(track.copy(fileSize = actualSize))
             }
         }
+    }
+
+    /**
+     * Fetch metadata for a track (cover art, lyrics, title, artist, etc.)
+     * Used by both single-track and gapless playlist playback.
+     */
+    suspend fun fetchMetadata(track: TrackInfo) {
+        try {
+            when (track.source) {
+                TrackSource.LOCAL -> {
+                    val metadata = metadataExtractor.extractFromUri(track.localUri ?: "")
+                    _metadataUpdates.value = metadata
+                    // Search for lyrics
+                    val lyrics = metadataExtractor.findLyrics(track.localUri ?: "")
+                    if (lyrics != null) {
+                        _lyricsUpdates.value = com.example.smbplayer.data.lyrics.LyricParser.parse(lyrics)
+                    }
+                }
+                TrackSource.SMB -> {
+                    val fileSize = if (track.fileSize > 0) track.fileSize
+                        else withContext(Dispatchers.IO) { smbFileBrowser.getFileSize(track.smbPath) }
+                    val metadata = metadataExtractor.extract(track.smbPath, fileSize)
+                    _metadataUpdates.value = metadata
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     fun pause() = playerRepository.pause()

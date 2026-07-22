@@ -7,7 +7,8 @@ import java.io.InputStream
 
 class SmbDataSource(
     private val inputStreamProvider: () -> InputStream,
-    private val fileSize: Long
+    private val fileSize: Long,
+    private val smbUri: String = "smb://unknown"
 ) : BaseDataSource(/* isNetwork = */ true) {
 
     private var inputStream: InputStream? = null
@@ -20,11 +21,16 @@ class SmbDataSource(
 
         val stream = inputStream ?: throw java.io.IOException("无法打开 SMB 文件流")
 
+        // Loop skip until all bytes are consumed (skip() may return fewer bytes than requested)
         if (dataSpec.position > 0) {
-            val skipped: Long = stream.skip(dataSpec.position)
-            if (skipped < dataSpec.position) {
-                close()
-                throw java.io.IOException("无法跳过 ${dataSpec.position} 字节")
+            var remaining = dataSpec.position
+            while (remaining > 0) {
+                val skipped = stream.skip(remaining)
+                if (skipped <= 0) {
+                    close()
+                    throw java.io.IOException("无法跳过 ${dataSpec.position} 字节 (还剩 $remaining)")
+                }
+                remaining -= skipped
             }
         }
 
@@ -52,9 +58,10 @@ class SmbDataSource(
         return bytesRead
     }
 
-    override fun getUri() = null
+    override fun getUri(): android.net.Uri? = android.net.Uri.parse(smbUri)
 
     override fun close() {
+        transferEnded()
         try { inputStream?.close() } catch (_: Exception) {}
         inputStream = null
         bytesRemaining = 0

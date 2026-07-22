@@ -2,9 +2,12 @@ package com.example.smbplayer.ui.settings
 
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.smbplayer.ui.theme.ThemeMode
 
@@ -26,37 +30,134 @@ fun SettingsScreen(
     var tapCount by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
 
-    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Text("设置", style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = 24.dp)
+    ) {
+        // Title
+        Text(
+            "设置",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+        )
 
-        Column(Modifier.weight(1f)) {
+        // === 外观 ===
+        SectionCard(title = "外观", icon = Icons.Filled.Palette) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ThemeButton("暗色", themeMode == ThemeMode.Dark) { viewModel.setThemeMode(ThemeMode.Dark) }
+                ThemeButton("浅色", themeMode == ThemeMode.Light) { viewModel.setThemeMode(ThemeMode.Light) }
+                ThemeButton("跟随系统", themeMode == ThemeMode.System) { viewModel.setThemeMode(ThemeMode.System) }
+            }
+        }
 
-            // ⚙ 播放
-            SectionHeader("播放")
+        // === 播放 ===
+        SectionCard(title = "播放", icon = Icons.Filled.PlayArrow) {
             SettingRow("默认播放模式", viewModel.playModeLabel) { viewModel.showPlayModePicker = true }
             SettingRow("播放速度", "${viewModel.playbackSpeed}x") { viewModel.showSpeedPicker = true }
+        }
 
-            // 🎵 音效
-            SectionHeader("音效")
+        // === 音效 ===
+        SectionCard(title = "音效", icon = Icons.Filled.Equalizer) {
             SettingRow("均衡器", "", Icons.Filled.Equalizer) { viewModel.showEqualizer = true }
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth().clickable { viewModel.toggleBassBoost(!viewModel.bassBoostOn) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(Icons.Filled.SurroundSound, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(12.dp))
                 Text("低音增强", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
                 Switch(checked = viewModel.bassBoostOn, onCheckedChange = { viewModel.toggleBassBoost(it) })
             }
+            Row(
+                Modifier.fillMaxWidth().clickable { viewModel.toggleReplayGain(!viewModel.replayGainEnabled) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.VolumeDown, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("响度标准化", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
+                    Text("ReplayGain 自动平衡不同歌曲音量", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = viewModel.replayGainEnabled, onCheckedChange = { viewModel.toggleReplayGain(it) })
+            }
+            SettingRow("音频输出设备", viewModel.selectedDeviceLabel, Icons.Filled.Speaker) { viewModel.showDevicePicker = true }
 
-            // ☁ 网络
-            SectionHeader("网络")
-            SettingRow("SMB 连接", viewModel.smbStatus) { viewModel.doDisconnectSmb() }
-            SettingRow("离线下载", "管理", Icons.Filled.Download) {}
+            // Channel Balance (A5)
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Speaker, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(12.dp))
+                    Text("声道平衡", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
+                    Text(viewModel.channelBalanceLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Slider(
+                    value = viewModel.channelBalance,
+                    onValueChange = { viewModel.updateChannelBalance(it) },
+                    valueRange = -1f..1f,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("左", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("中", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("右", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
 
-            // 🔧 工具
-            SectionHeader("工具")
+            // Pitch Control (A6)
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.MusicNote, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(12.dp))
+                    Text("音调", Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
+                    Text(viewModel.pitchLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Slider(
+                    value = viewModel.playbackPitch,
+                    onValueChange = { viewModel.setPitch(it) },
+                    valueRange = 0.5f..2.0f,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("0.5x", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("1.0x", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("2.0x", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
+        // === SMB ===
+        SectionCard(title = "SMB 网络", icon = Icons.Filled.Cloud) {
+            SettingRow("连接状态", viewModel.smbStatus) { viewModel.doDisconnectSmb() }
+        }
+
+        // === 本地音乐 ===
+        SectionCard(title = "本地音乐", icon = Icons.Filled.Folder) {
+            SettingRow("扫描文件夹管理", "", Icons.Filled.FolderOpen) { viewModel.showFolderConfig = true }
+            SettingRow("最短歌曲时长", viewModel.minDurationLabel, Icons.Filled.Timer) { viewModel.showDurationPicker = true }
+        }
+
+        // === 工具 ===
+        SectionCard(title = "工具", icon = Icons.Filled.Build) {
+            SettingRow("播放统计", "", Icons.Filled.BarChart) { viewModel.showPlayStats = true }
             SettingRow("睡眠定时器", viewModel.sleepTimerLabel) { viewModel.showSleepTimer = true }
             SettingRow("AB 循环", viewModel.abLoopLabel, Icons.Filled.Pin) { viewModel.doClearABLoop() }
-            SettingRow("导出播放列表 .m3u", "", Icons.Filled.FileDownload) { viewModel.exportM3u(context) }
+            SettingRow("导出播放列表", ".m3u", Icons.Filled.FileDownload) { viewModel.exportM3u(context) }
             SettingRow("数据备份", "复制", Icons.Filled.Backup) {
                 viewModel.exportBackup { json ->
                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -69,59 +170,102 @@ fun SettingsScreen(
                 if (text != null) viewModel.importBackup(text)
             }
             SettingRow("缓存管理", viewModel.cacheSize, Icons.Filled.CleaningServices) { viewModel.doClearCache() }
+        }
 
-            // 🖥 显示
-            SectionHeader("显示")
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = themeMode == ThemeMode.Dark, onClick = { viewModel.setThemeMode(ThemeMode.Dark) })
-                Text("暗色", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
-                Spacer(Modifier.width(16.dp))
-                RadioButton(selected = themeMode == ThemeMode.System, onClick = { viewModel.setThemeMode(ThemeMode.System) })
-                Text("跟随系统", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
-            }
-
-            // ℹ 关于
-            SectionHeader("关于")
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        // === 关于 ===
+        SectionCard(title = "关于", icon = Icons.Filled.Info) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text("版本", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
                 Text(
-                    if (tapCount >= 5) "1.0.0 (开发者)".also { tapCount = 0 } else "1.0.0",
+                    if (tapCount >= 5) "3.0.0 (开发者)".also { tapCount = 0 } else "3.0.0",
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (tapCount >= 5) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.clickable { tapCount++; if (tapCount >= 5) tapCount = 5 }
                 )
             }
             if (tapCount >= 5) {
-                Column(Modifier.padding(horizontal = 16.dp)) {
-                    Text("SDK 36 | Kotlin 2.0.21 | Media3 1.4.1", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                Text(
+                    "SDK 36 | Kotlin 2.0.21 | Media3 1.4.1",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
             }
-            Spacer(Modifier.height(24.dp))
         }
     }
 
     // Dialogs
-    if (viewModel.showPlayModePicker) {
-        PlayModePicker(viewModel)
-    }
-    if (viewModel.showSpeedPicker) {
-        SpeedPicker(viewModel)
-    }
-    if (viewModel.showSleepTimer) {
-        SleepTimerPicker(viewModel)
-    }
-    if (viewModel.showEqualizer) {
-        EqualizerSheet(viewModel)
-    }
+    if (viewModel.showPlayModePicker) PlayModePicker(viewModel)
+    if (viewModel.showSpeedPicker) SpeedPicker(viewModel)
+    if (viewModel.showSleepTimer) SleepTimerPicker(viewModel)
+    if (viewModel.showEqualizer) EqualizerSheet(viewModel)
+    if (viewModel.showDevicePicker) DevicePicker(viewModel)
+    if (viewModel.showFolderConfig) FolderConfigDialog(viewModel)
+    if (viewModel.showDurationPicker) DurationPicker(viewModel)
+    if (viewModel.showPlayStats) PlayStatsDialog(viewModel)
 }
 
 // ========== Sub-components ==========
 
 @Composable
-private fun SectionHeader(title: String) {
-    Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).padding(top = 8.dp))
+private fun SectionCard(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 5.dp)
+    ) {
+        Row(
+            Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(8.dp))
+            Text(title, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary)
+        }
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(content = content)
+        }
+    }
+}
+
+@Composable
+private fun ThemeButton(label: String, selected: Boolean, onClick: () -> Unit) {
+    val bg by animateColorAsState(
+        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+        label = "tb"
+    )
+    val textColor by animateColorAsState(
+        if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+        label = "tt"
+    )
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = bg,
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(vertical = 10.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            style = MaterialTheme.typography.labelLarge,
+            color = textColor
+        )
+    }
 }
 
 @Composable
@@ -206,7 +350,6 @@ private fun EqualizerSheet(viewModel: SettingsViewModel) {
         title = { Text("均衡器") },
         text = {
             Column {
-                // EQ presets
                 Text("预设", style = MaterialTheme.typography.titleSmall)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     repeat(viewModel.eqPresetCount) { i ->
@@ -218,7 +361,6 @@ private fun EqualizerSheet(viewModel: SettingsViewModel) {
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                // Band sliders
                 Text("手动调节", style = MaterialTheme.typography.titleSmall)
                 repeat(viewModel.eqBandCount) { band ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -238,4 +380,188 @@ private fun EqualizerSheet(viewModel: SettingsViewModel) {
         },
         confirmButton = { TextButton(onClick = { viewModel.showEqualizer = false }) { Text("关闭") } }
     )
+}
+
+@Composable
+private fun DevicePicker(viewModel: SettingsViewModel) {
+    val devices by viewModel.audioDeviceManager.availableDevices.collectAsState()
+    val selectedId by viewModel.audioDeviceManager.selectedDeviceId.collectAsState()
+    AlertDialog(
+        onDismissRequest = { viewModel.showDevicePicker = false },
+        title = { Text("音频输出设备") },
+        text = {
+            Column {
+                // Default option
+                Row(Modifier.fillMaxWidth().clickable {
+                    viewModel.selectDevice(null)
+                    viewModel.showDevicePicker = false
+                }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = selectedId == null, onClick = {
+                        viewModel.selectDevice(null)
+                        viewModel.showDevicePicker = false
+                    })
+                    Spacer(Modifier.width(8.dp))
+                    Column {
+                        Text("默认设备", style = MaterialTheme.typography.bodyLarge)
+                        Text("系统自动选择", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                // Available devices
+                devices.forEach { device ->
+                    Row(Modifier.fillMaxWidth().clickable {
+                        viewModel.selectDevice(device)
+                        viewModel.showDevicePicker = false
+                    }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = selectedId == device.id, onClick = {
+                            viewModel.selectDevice(device)
+                            viewModel.showDevicePicker = false
+                        })
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(device.displayName, style = MaterialTheme.typography.bodyLarge)
+                            if (device.name.isNotEmpty() && device.name != device.displayName) {
+                                Text(device.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+                if (devices.isEmpty()) {
+                    Text("未检测到音频输出设备", style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp))
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { viewModel.showDevicePicker = false }) { Text("关闭") } }
+    )
+}
+
+@Composable
+private fun FolderConfigDialog(viewModel: SettingsViewModel) {
+    val excluded by viewModel.excludedFolders.collectAsState()
+    AlertDialog(
+        onDismissRequest = { viewModel.showFolderConfig = false },
+        title = { Text("扫描文件夹管理") },
+        text = {
+            Column {
+                Text("以下系统文件夹默认不扫描，可手动开启：",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp))
+                viewModel.defaultExcludedFolders.forEach { folder ->
+                    val isExcluded = folder in excluded
+                    Row(Modifier.fillMaxWidth().clickable { viewModel.toggleExcludedFolder(folder) }
+                        .padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Folder, null, Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(12.dp))
+                        Text(folder, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground)
+                        Switch(checked = isExcluded, onCheckedChange = { viewModel.toggleExcludedFolder(folder) })
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { viewModel.showFolderConfig = false }) { Text("完成") } }
+    )
+}
+
+@Composable
+private fun DurationPicker(viewModel: SettingsViewModel) {
+    val durations = listOf(30 to "30秒", 60 to "60秒", 90 to "90秒", 120 to "120秒")
+    AlertDialog(
+        onDismissRequest = { viewModel.showDurationPicker = false },
+        title = { Text("最短歌曲时长") },
+        text = {
+            Column {
+                Text("低于此时间的音频文件将被过滤：",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp))
+                durations.forEach { (sec, label) ->
+                    Row(Modifier.fillMaxWidth().clickable {
+                        viewModel.setMinDuration(sec)
+                        viewModel.showDurationPicker = false
+                    }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = viewModel.minDuration.value == sec, onClick = {
+                            viewModel.setMinDuration(sec)
+                            viewModel.showDurationPicker = false
+                        })
+                        Spacer(Modifier.width(8.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {}
+    )
+}
+
+@Composable
+private fun PlayStatsDialog(viewModel: SettingsViewModel) {
+    LaunchedEffect(Unit) { viewModel.loadPlayStats() }
+    val totalPlayTime by viewModel.totalPlayTime.collectAsState()
+    val playStats by viewModel.playStats.collectAsState()
+    val totalPlays = playStats.values.sum()
+    val topTracks = playStats.entries.sortedByDescending { it.value }.take(10)
+
+    AlertDialog(
+        onDismissRequest = { viewModel.showPlayStats = false },
+        title = { Text("播放统计") },
+        text = {
+            Column {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatCard(Modifier.weight(1f), "总播放次数", "$totalPlays")
+                    StatCard(Modifier.weight(1f), "总播放时长", formatDuration(totalPlayTime))
+                }
+                Spacer(Modifier.height(16.dp))
+                if (topTracks.isNotEmpty()) {
+                    Text("最常播放 Top 10", style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(bottom = 8.dp))
+                    topTracks.forEachIndexed { index, (trackId, count) ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Text("${index + 1}.", Modifier.width(24.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary)
+                            Text(trackId.substringAfterLast('/').substringBeforeLast('.'),
+                                Modifier.weight(1f), maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyMedium)
+                            Text("${count}次", style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                } else {
+                    Text("暂无播放记录", style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 16.dp))
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { viewModel.showPlayStats = false }) { Text("关闭") } }
+    )
+}
+
+@Composable
+private fun StatCard(modifier: Modifier, label: String, value: String) {
+    Card(modifier, shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+private fun formatDuration(ms: Long): String {
+    val seconds = ms / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+    return when {
+        hours > 0 -> "${hours}小时${minutes % 60}分"
+        minutes > 0 -> "${minutes}分钟"
+        else -> "${seconds}秒"
+    }
 }

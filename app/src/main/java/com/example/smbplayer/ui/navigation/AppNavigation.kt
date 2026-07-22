@@ -1,6 +1,9 @@
 package com.example.smbplayer.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,12 +55,18 @@ fun SmbPlayerAppContent() {
     var browseSubTab by remember { mutableIntStateOf(0) } // 0=albums, 1=SMB
 
     if (showPlayerScreen && playerState !is PlayerState.Idle && playerState !is PlayerState.Error) {
-        PlayerScreen(
-            viewModel = playerViewModel,
-            favoritesViewModel = favoritesViewModel,
-            onBack = { showPlayerScreen = false },
-            onOpenPlaylist = { showPlaylist = true; showPlayerScreen = false }
-        )
+        AnimatedVisibility(
+            visible = true,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it })
+        ) {
+            PlayerScreen(
+                viewModel = playerViewModel,
+                favoritesViewModel = favoritesViewModel,
+                onBack = { showPlayerScreen = false },
+                onOpenPlaylist = { showPlaylist = true; showPlayerScreen = false }
+            )
+        }
         return
     }
 
@@ -117,10 +126,15 @@ fun SmbPlayerAppContent() {
                                 Text("SMB", color = if (browseSubTab == 1) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = if (browseSubTab == 1) FontWeight.Bold else FontWeight.Normal)
                             }
+                            TextButton(onClick = { browseSubTab = 2 }, modifier = Modifier.weight(1f)) {
+                                Text("文件夹", color = if (browseSubTab == 2) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = if (browseSubTab == 2) FontWeight.Bold else FontWeight.Normal)
+                            }
                         }
                         when (browseSubTab) {
                             0 -> LibraryScreen(libraryViewModel, connectViewModel, playerViewModel, favoritesViewModel, "albums", Modifier.weight(1f))
                             1 -> LibraryScreen(libraryViewModel, connectViewModel, playerViewModel, favoritesViewModel, "smb", Modifier.weight(1f))
+                            2 -> LibraryScreen(libraryViewModel, connectViewModel, playerViewModel, favoritesViewModel, "folders", Modifier.weight(1f))
                         }
                     }
                 }

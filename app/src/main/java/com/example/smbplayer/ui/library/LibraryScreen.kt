@@ -4,6 +4,11 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
@@ -17,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -71,7 +77,7 @@ fun LibraryScreen(
         OutlinedTextField(
             value = searchQuery, onValueChange = { searchQuery = it },
             placeholder = { Text("搜索歌曲、专辑...", style = MaterialTheme.typography.bodySmall) },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).height(48.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).height(44.dp),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -85,6 +91,7 @@ fun LibraryScreen(
             "songs" -> SongList(filteredTracks, isLoading, hasPermission, permLauncher, viewModel, playerViewModel, playHistory, Modifier.weight(1f))
             "albums" -> if (selectedAlbum != null) AlbumDetailScreen(selectedAlbum!!, playerViewModel, onBack = { selectedAlbum = null }, Modifier.weight(1f)) else AlbumGrid(filteredAlbums, isLoading, playerViewModel, Modifier.weight(1f), { selectedAlbum = it })
             "smb" -> SmbBrowser(filteredSmb, breadcrumbs, isSMBConnected, isLoading, viewModel, playerViewModel, Modifier.weight(1f))
+            "folders" -> FolderBrowser(filteredTracks, isLoading, hasPermission, playerViewModel, Modifier.weight(1f))
         }
     }
 }
@@ -98,6 +105,10 @@ private fun timeGreeting(): String = when (java.util.Calendar.getInstance().get(
 private fun fmtDur(ms: Long) = if (ms <= 0) "" else { val s = ms / 1000; "${s / 60}:${(s % 60).toString().padStart(2, '0')}" }
 private fun fmtSize(b: Long) = when { b < 1024 -> "${b} B"; b < 1048576 -> "${b / 1024} KB"; else -> "%.1f MB".format(b / 1048576.0) }
 
+enum class SortMode(val label: String) {
+    TITLE("按标题"), ARTIST("按歌手"), ALBUM("按专辑"), DURATION("按时长"), DATE("按添加时间")
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SongList(
@@ -106,9 +117,23 @@ private fun SongList(
     viewModel: LibraryViewModel, playerViewModel: PlayerViewModel,
     history: List<TrackInfo>, modifier: Modifier
 ) {
-    if (isLoading) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
-    if (!hasPermission) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("需要媒体权限") }; return }
-    if (tracks.isEmpty()) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("没有本地音乐") }; return }
+    if (isLoading) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(Modifier.size(48.dp)); Spacer(Modifier.height(16.dp)); Text("加载中...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; return }
+    if (!hasPermission) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Filled.FolderOpen, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)); Spacer(Modifier.height(12.dp)); Text("需要媒体权限", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; return }
+    if (tracks.isEmpty()) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Filled.MusicOff, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)); Spacer(Modifier.height(12.dp)); Text("没有本地音乐", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; return }
+
+    var sortMode by remember { mutableStateOf(SortMode.TITLE) }
+    var sortAscending by remember { mutableStateOf(true) }
+
+    val sortedTracks = remember(tracks, sortMode, sortAscending) {
+        val sorted = when (sortMode) {
+            SortMode.TITLE -> tracks.sortedBy { it.title.lowercase() }
+            SortMode.ARTIST -> tracks.sortedBy { it.artist.lowercase() }
+            SortMode.ALBUM -> tracks.sortedBy { it.album.lowercase() }
+            SortMode.DURATION -> tracks.sortedBy { it.durationMs }
+            SortMode.DATE -> tracks.sortedByDescending { it.id } // Higher ID = more recent
+        }
+        if (sortAscending) sorted else sorted.reversed()
+    }
 
     LazyColumn(modifier) {
         // === 问候 + 时间 ===
@@ -155,7 +180,7 @@ private fun SongList(
 
         // === 每日名言 ===
         item {
-            Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), shape = RoundedCornerShape(10.dp),
+            Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(10.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                 val quotes = listOf(
                     "音乐是人类通用的语言 — 朗费罗",
@@ -211,7 +236,7 @@ private fun SongList(
         item {
             Text("今日推荐", style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 10.dp))
+                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 12.dp))
         }
         if (tracks.isNotEmpty()) {
             item {
@@ -238,24 +263,74 @@ private fun SongList(
             }
         }
 
+        // Smart Playlists
+        if (tracks.isNotEmpty()) {
+            item {
+                Text("智能歌单", style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 12.dp))
+            }
+            item {
+                val smartPlaylists = listOf(
+                    Triple("最近添加", Icons.Filled.NewReleases, { com.example.smbplayer.domain.SmartPlaylistGenerator().recentlyAdded(tracks) }),
+                    Triple("随机歌单", Icons.Filled.Shuffle, { com.example.smbplayer.domain.SmartPlaylistGenerator().randomMix(tracks) }),
+                    Triple("短歌曲", Icons.Filled.Timer, { com.example.smbplayer.domain.SmartPlaylistGenerator().shortTracks(tracks) }),
+                    Triple("长歌曲", Icons.Filled.AllInclusive, { com.example.smbplayer.domain.SmartPlaylistGenerator().longTracks(tracks) })
+                )
+                LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(smartPlaylists.size) { index ->
+                        val (name, icon, generator) = smartPlaylists[index]
+                        Card(Modifier.width(120.dp).clickable {
+                            val playlist = generator()
+                            if (playlist.isNotEmpty()) playerViewModel.playTrack(playlist[0], playlist, 0)
+                        }, shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))) {
+                            Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(icon, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.height(8.dp))
+                                Text(name, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onBackground)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // === 全部歌曲 (始终显示) ===
         item {
-            Text("全部歌曲 (${tracks.size}首)", style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 10.dp))
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("全部歌曲 (${sortedTracks.size}首)", style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
+                // Sort button
+                var showSortMenu by remember { mutableStateOf(false) }
+                IconButton(onClick = { showSortMenu = true }, Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.Sort, "排序", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                    SortMode.entries.forEach { mode ->
+                        DropdownMenuItem(text = { Text(mode.label) }, onClick = {
+                            if (sortMode == mode) sortAscending = !sortAscending
+                            else { sortMode = mode; sortAscending = true }
+                            showSortMenu = false
+                        }, leadingIcon = {
+                            if (sortMode == mode) Icon(Icons.Filled.Check, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                        })
+                    }
+                }
+            }
         }
 
         // === 歌曲列表 ===
-        items(tracks, key = { it.id }) { track ->
+        items(sortedTracks, key = { it.id }) { track ->
             val isCurrent = playerViewModel.currentTrack.value?.localUri == track.uri.toString()
             var showMenu by remember { mutableStateOf(false) }
             Row(Modifier.fillMaxWidth().animateItem().combinedClickable(onClick = {
                 playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString()))
             }, onLongClick = { showMenu = true }).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (isCurrent) {
+                AnimatedVisibility(visible = isCurrent, enter = fadeIn() + expandHorizontally(), exit = fadeOut() + shrinkHorizontally()) {
                     Box(Modifier.width(3.dp).height(36.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)))
-                    Spacer(Modifier.width(8.dp))
                 }
+                if (isCurrent) { Spacer(Modifier.width(8.dp)) }
                 Box(Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
                     val artUri = remember(track.id) { track.albumArtUri() }
                     if (artUri != null) AsyncImage(model = artUri, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -279,7 +354,7 @@ private fun SongList(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AlbumGrid(albums: List<AlbumEntry>, isLoading: Boolean, playerViewModel: PlayerViewModel, modifier: Modifier, onAlbumClick: (AlbumEntry) -> Unit = {}) {
-    if (isLoading) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
+    if (isLoading) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(Modifier.size(48.dp)); Spacer(Modifier.height(16.dp)); Text("加载中...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; return }
     if (albums.isEmpty()) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("没有专辑") }; return }
     LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items(albums, key = { "${it.artist}_${it.name}" }) { album ->
@@ -303,7 +378,7 @@ private fun AlbumGrid(albums: List<AlbumEntry>, isLoading: Boolean, playerViewMo
 
 @Composable
 private fun SmbBrowser(entries: List<SmbFileEntry>, breadcrumbs: List<String>, isConnected: Boolean, isLoading: Boolean, viewModel: LibraryViewModel, playerViewModel: PlayerViewModel, modifier: Modifier) {
-    if (isLoading) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return }
+    if (isLoading) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(Modifier.size(48.dp)); Spacer(Modifier.height(16.dp)); Text("加载中...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; return }
     if (!isConnected) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("未连接 SMB") }; return }
     Column(modifier) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -327,6 +402,102 @@ private fun SmbBrowser(entries: List<SmbFileEntry>, breadcrumbs: List<String>, i
                     Column(Modifier.weight(1f)) {
                         Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onBackground)
                         if (!entry.isDirectory && entry.size > 0) Text(fmtSize(entry.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FolderBrowser(
+    tracks: List<LocalTrack>, isLoading: Boolean, hasPermission: Boolean,
+    playerViewModel: PlayerViewModel, modifier: Modifier
+) {
+    if (isLoading) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(Modifier.size(48.dp))
+        }
+        return
+    }
+    if (!hasPermission) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("需要媒体权限", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
+
+    // Group tracks by folder path
+    val folderMap = remember(tracks) {
+        tracks.groupBy { track ->
+            val path = track.uri.path ?: ""
+            path.substringBeforeLast('/')
+        }
+    }
+    val sortedFolders = remember(folderMap) { folderMap.keys.sorted() }
+
+    var currentFolder by remember { mutableStateOf<String?>(null) }
+    val folderTracks = currentFolder?.let { folderMap[it] } ?: emptyList()
+
+    Column(modifier) {
+        // Breadcrumb
+        if (currentFolder != null) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { currentFolder = null }, Modifier.size(32.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", Modifier.size(20.dp))
+                }
+                Text(currentFolder?.substringAfterLast('/') ?: "", style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.weight(1f))
+                Text("${folderTracks.size}首", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            HorizontalDivider()
+        }
+
+        if (currentFolder == null) {
+            // Show folder list
+            LazyColumn(Modifier.fillMaxSize()) {
+                items(sortedFolders, key = { it }) { folder ->
+                    val folderName = folder.substringAfterLast('/')
+                    val trackCount = folderMap[folder]?.size ?: 0
+                    Row(Modifier.fillMaxWidth().animateItem().clickable { currentFolder = folder }
+                        .padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Folder, null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+                        Spacer(Modifier.width(14.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(folderName, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onBackground)
+                            Text(folder, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text("$trackCount", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        } else {
+            // Show tracks in folder
+            LazyColumn(Modifier.fillMaxSize()) {
+                items(folderTracks, key = { it.id }) { track ->
+                    val isCurrent = playerViewModel.currentTrack.value?.localUri == track.uri.toString()
+                    Row(Modifier.fillMaxWidth().animateItem().clickable {
+                        val trackInfos = folderTracks.map { t -> TrackInfo(TrackSource.LOCAL, t.title, t.artist, t.album, t.durationMs, t.uri.toString()) }
+                        val idx = folderTracks.indexOf(track)
+                        playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString()), trackInfos, idx)
+                    }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (isCurrent) {
+                            Box(Modifier.width(3.dp).height(36.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)))
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Box(Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                            val artUri = remember(track.id) { track.albumArtUri() }
+                            if (artUri != null) AsyncImage(model = artUri, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            else Icon(Icons.Filled.MusicNote, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(track.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onBackground)
+                            Text("${track.artist} · ${track.album}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Text(fmtDur(track.durationMs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
