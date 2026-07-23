@@ -17,6 +17,7 @@ release/
 
 # Gradle files
 .gradle/
+.gradle-cache/
 build/
 app/build/
 

@@ -58,6 +58,16 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_info" />
         </receiver>
+
+        <receiver
+            android:name=".service.MediaControlReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.smbplayer.PREV" />
+                <action android:name="com.example.smbplayer.PLAY_PAUSE" />
+                <action android:name="com.example.smbplayer.NEXT" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

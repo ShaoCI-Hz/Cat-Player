@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -66,6 +67,23 @@ fun PlayerScreen(
     val bgColor = remember(coverBytes) { PaletteUtil.extractDarkMuted(coverBytes, Color(0xFF0A0A0A)) }
     val playBtnScale by animateFloatAsState(if (isPlaying) 0.93f else 1f, spring(dampingRatio = 0.4f, stiffness = 600f), label = "playBtn")
 
+    // P1: Cover rotation animation - rotates when playing, stops when paused
+    val infiniteTransition = rememberInfiniteTransition(label = "coverRotate")
+    val coverRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(20000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "coverRotation"
+    )
+    val coverScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0.95f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
+        label = "coverScale"
+    )
+
     Scaffold(containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(title = {}, navigationIcon = {
@@ -82,14 +100,16 @@ fun PlayerScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).background(Brush.verticalGradient(listOf(bgColor.copy(alpha = 0.6f), Color(0xFF0A0A0A)))).padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(12.dp))
-            // Cover art with gesture support (B2)
+            // Cover art with gesture support + rotation animation (P1)
             var volumeAdjust by remember { mutableFloatStateOf(0f) }
             Box(
-                Modifier.size(280.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
+                Modifier.size(280.dp).clip(RoundedCornerShape(140.dp)).border(2.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(140.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
+                    .rotate(if (isPlaying) coverRotation else 0f)
+                    .scale(coverScale)
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures { _, dragAmount ->
-                            if (dragAmount > 50) viewModel.prev() // Swipe right = previous
-                            else if (dragAmount < -50) viewModel.next() // Swipe left = next
+                            if (dragAmount > 50) viewModel.prev()
+                            else if (dragAmount < -50) viewModel.next()
                         }
                     }
                     .pointerInput(Unit) {
@@ -101,7 +121,7 @@ fun PlayerScreen(
                     },
                 Alignment.Center
             ) {
-                if (coverBytes != null) AsyncImage(model = coverBytes, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                if (coverBytes != null) AsyncImage(model = coverBytes, null, Modifier.fillMaxSize().clip(RoundedCornerShape(140.dp)), contentScale = ContentScale.Crop)
                 else Icon(Icons.Filled.MusicNote, null, Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(24.dp))
@@ -158,8 +178,38 @@ private fun PlayerProgress(viewModel: PlayerViewModel) {
     var isDragging by remember { mutableStateOf(false) }
     var dragTarget by remember { mutableFloatStateOf(0f) }
     val displayPos = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f
+    val animatedPos by animateFloatAsState(
+        targetValue = if (isDragging) dragTarget else displayPos,
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        label = "progressAnim"
+    )
+
+    // P2: Gradient progress bar
     Column(Modifier.fillMaxWidth()) {
-        Slider(value = if (isDragging) dragTarget else displayPos, onValueChange = { isDragging = true; dragTarget = it }, onValueChangeFinished = { isDragging = false; viewModel.seekTo((dragTarget * duration).toLong()) }, modifier = Modifier.fillMaxWidth(), colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary, activeTrackColor = MaterialTheme.colorScheme.primary, inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant))
+        Box(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            // Custom gradient track
+            val trackHeight = 4.dp
+            Box(Modifier.fillMaxWidth().height(trackHeight).align(Alignment.CenterStart)) {
+                Box(Modifier.fillMaxSize().clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
+                Box(Modifier.fillMaxWidth(animatedPos).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(
+                    Brush.horizontalGradient(listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                        MaterialTheme.colorScheme.primary
+                    ))
+                ))
+            }
+        }
+        Slider(
+            value = if (isDragging) dragTarget else animatedPos,
+            onValueChange = { isDragging = true; dragTarget = it },
+            onValueChangeFinished = { isDragging = false; viewModel.seekTo((dragTarget * duration).toLong()) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = Color.Transparent
+            )
+        )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatTime(currentPosition), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(formatTime(duration), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -56,6 +56,27 @@ class MusicPlaybackService : MediaSessionService() {
             .setOngoing(player.playWhenReady)
             .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setShowWhen(false)
+            // Previous button
+            .addAction(
+                R.drawable.ic_skip_previous,
+                "上一首",
+                buildPendingIntent(ACTION_PREV)
+            )
+            // Play/Pause button
+            .addAction(
+                if (player.playWhenReady) R.drawable.ic_pause else R.drawable.ic_play,
+                if (player.playWhenReady) "暂停" else "播放",
+                buildPendingIntent(ACTION_PLAY_PAUSE)
+            )
+            // Next button
+            .addAction(
+                R.drawable.ic_skip_next,
+                "下一首",
+                buildPendingIntent(ACTION_NEXT)
+            )
             .build()
 
         if (startInForegroundWhenRequired) {
@@ -64,6 +85,16 @@ class MusicPlaybackService : MediaSessionService() {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.notify(NOTIFICATION_ID, notification)
         }
+    }
+
+    private fun buildPendingIntent(action: String): PendingIntent {
+        val intent = Intent(this, MediaControlReceiver::class.java).apply {
+            this.action = action
+        }
+        return PendingIntent.getBroadcast(
+            this, action.hashCode(), intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     override fun onDestroy() {
@@ -78,9 +109,10 @@ class MusicPlaybackService : MediaSessionService() {
             "音乐播放",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "显示当前播放曲目"
+            description = "显示当前播放曲目和控制按钮"
             setSound(null, null)
             setShowBadge(false)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
@@ -89,5 +121,8 @@ class MusicPlaybackService : MediaSessionService() {
     companion object {
         const val CHANNEL_ID = "smb_playback_channel"
         const val NOTIFICATION_ID = 1001
+        const val ACTION_PREV = "com.example.smbplayer.PREV"
+        const val ACTION_PLAY_PAUSE = "com.example.smbplayer.PLAY_PAUSE"
+        const val ACTION_NEXT = "com.example.smbplayer.NEXT"
     }
 }
