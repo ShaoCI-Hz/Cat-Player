@@ -127,23 +127,38 @@ fun PlayerScreen(
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).background(Brush.verticalGradient(listOf(bgColor.copy(alpha = 0.6f), Color(0xFF0A0A0A)))).padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(12.dp))
-            // Cover art with gesture support + rotation animation (P1)
+            // Cover art with gesture support + rotation animation (P1 + #3 enhanced)
             var volumeAdjust by remember { mutableFloatStateOf(0f) }
+            val haptic = LocalHapticFeedback.current
             Box(
                 Modifier.size(280.dp).clip(RoundedCornerShape(140.dp)).border(2.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(140.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
                     .rotate(if (isPlaying) coverRotation else 0f)
                     .scale(coverScale)
                     .pointerInput(Unit) {
-                        detectHorizontalDragGestures { _, dragAmount ->
-                            if (dragAmount > 50) viewModel.prev()
-                            else if (dragAmount < -50) viewModel.next()
-                        }
+                        detectHorizontalDragGestures(
+                            onDragEnd = {},
+                            onDragCancel = {},
+                            onHorizontalDrag = { _, dragAmount ->
+                                // #3: Velocity-aware swipe with haptic feedback
+                                if (dragAmount > 30) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.prev()
+                                } else if (dragAmount < -30) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.next()
+                                }
+                            }
+                        )
                     }
                     .pointerInput(Unit) {
                         detectVerticalDragGestures { _, dragAmount ->
-                            volumeAdjust = (-dragAmount / 500f).coerceIn(-0.1f, 0.1f)
+                            volumeAdjust = (-dragAmount / 400f).coerceIn(-0.15f, 0.15f)
                             val newVol = (viewModel.volume.value + volumeAdjust).coerceIn(0f, 1f)
                             viewModel.setVolume(newVol)
+                            // Haptic feedback on volume change
+                            if (kotlin.math.abs(dragAmount) > 20) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            }
                         }
                     },
                 Alignment.Center

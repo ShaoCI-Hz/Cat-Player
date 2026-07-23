@@ -34,6 +34,7 @@ import com.example.smbplayer.ui.player.PlayerViewModel
 import com.example.smbplayer.ui.playlist.PlaylistScreen
 import com.example.smbplayer.ui.settings.SettingsScreen
 import com.example.smbplayer.ui.settings.SettingsViewModel
+import com.example.smbplayer.ui.onboarding.OnboardingScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +46,14 @@ fun SmbPlayerAppContent() {
     val settingsViewModel: SettingsViewModel = hiltViewModel()
 
     val playerState by playerViewModel.playerState.collectAsState()
+
+    // #11: Onboarding check
+    var showOnboarding by remember { mutableStateOf(true) }
+
+    if (showOnboarding) {
+        OnboardingScreen(onComplete = { showOnboarding = false })
+        return
+    }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var showPlayerScreen by remember { mutableStateOf(false) }

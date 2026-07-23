@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -91,6 +92,10 @@ fun SettingsScreen(
                     Text("ReplayGain 自动平衡不同歌曲音量", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Switch(checked = viewModel.replayGainEnabled, onCheckedChange = { viewModel.toggleReplayGain(it) })
+            }
+            // #6: ReplayGain scan button
+            SettingRow("扫描音量标签", "扫描本地音乐的ReplayGain标签", Icons.Filled.Analytics) {
+                viewModel.scanReplayGain()
             }
             SettingRow("音频输出设备", viewModel.selectedDeviceLabel, Icons.Filled.Speaker) { viewModel.showDevicePicker = true }
 
@@ -375,6 +380,41 @@ private fun EqualizerSheet(viewModel: SettingsViewModel) {
                 Spacer(Modifier.height(16.dp))
                 HorizontalDivider()
                 Spacer(Modifier.height(12.dp))
+                // #5: EQ Visualizer - bar chart showing current levels
+                Text("频响曲线", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(8.dp))
+                Canvas(Modifier.fillMaxWidth().height(80.dp)) {
+                    val barCount = viewModel.eqBandCount
+                    if (barCount > 0) {
+                        val barWidth = size.width / barCount * 0.7f
+                        val gap = size.width / barCount * 0.3f
+                        val range = viewModel.eqBandRange
+                        val midY = size.height / 2
+
+                        for (i in 0 until barCount) {
+                            val level = viewModel.eqBandLevel(i).toFloat()
+                            val normalizedHeight = (level - range.first()) / (range.last() - range.first()) * size.height * 0.4f
+                            val x = i * (barWidth + gap) + gap / 2
+
+                            // Bar
+                            drawLine(
+                                color = androidx.compose.ui.graphics.Color(0xFF1ED760).copy(alpha = 0.7f),
+                                start = androidx.compose.ui.geometry.Offset(x + barWidth / 2, midY),
+                                end = androidx.compose.ui.geometry.Offset(x + barWidth / 2, midY - normalizedHeight),
+                                strokeWidth = barWidth,
+                                cap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
+                        }
+                        // Center line
+                        drawLine(
+                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f),
+                            start = androidx.compose.ui.geometry.Offset(0f, midY),
+                            end = androidx.compose.ui.geometry.Offset(size.width, midY),
+                            strokeWidth = 1f
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 // Manual bands
                 Text("手动调节", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.height(8.dp))
