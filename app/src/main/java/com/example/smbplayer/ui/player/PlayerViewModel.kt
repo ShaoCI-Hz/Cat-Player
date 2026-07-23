@@ -1,8 +1,10 @@
 package com.example.smbplayer.ui.player
 
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.smbplayer.data.audio.AudioFormatDetector
 import com.example.smbplayer.data.player.PlayMode
 import com.example.smbplayer.data.player.PlayerRepository
 import com.example.smbplayer.data.player.PlayerState
@@ -27,7 +29,8 @@ class PlayerViewModel @Inject constructor(
     private val playerRepository: PlayerRepository,
     private val playAudioUseCase: PlayAudioUseCase,
     private val managePlaylistUseCase: ManagePlaylistUseCase,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val audioFormatDetector: AudioFormatDetector
 ) : ViewModel() {
 
     val playerState: StateFlow<PlayerState> = playerRepository.playerState
@@ -36,6 +39,10 @@ class PlayerViewModel @Inject constructor(
 
     private val _currentTrack = MutableStateFlow<TrackInfo?>(null)
     val currentTrack: StateFlow<TrackInfo?> = _currentTrack.asStateFlow()
+
+    // Audio format info
+    private val _audioFormatInfo = MutableStateFlow(AudioFormatDetector.AudioFormatInfo())
+    val audioFormatInfo: StateFlow<AudioFormatDetector.AudioFormatInfo> = _audioFormatInfo.asStateFlow()
 
     private var playJob: kotlinx.coroutines.Job? = null
 
@@ -192,6 +199,28 @@ class PlayerViewModel @Inject constructor(
             }
             // Fetch metadata for the current track
             fetchMetadataForTrack(track)
+            // Detect audio format
+            detectAudioFormat(track)
+        }
+    }
+
+    /**
+     * Detect audio format info for the current track.
+     */
+    private fun detectAudioFormat(track: TrackInfo) {
+        viewModelScope.launch {
+            try {
+                val uri = if (track.source == com.example.smbplayer.data.player.TrackSource.LOCAL) {
+                    track.localUri?.let { Uri.parse(it) }
+                } else null
+                if (uri != null) {
+                    _audioFormatInfo.value = audioFormatDetector.detectFromUri(uri)
+                } else {
+                    _audioFormatInfo.value = AudioFormatDetector.AudioFormatInfo()
+                }
+            } catch (_: Exception) {
+                _audioFormatInfo.value = AudioFormatDetector.AudioFormatInfo()
+            }
         }
     }
 

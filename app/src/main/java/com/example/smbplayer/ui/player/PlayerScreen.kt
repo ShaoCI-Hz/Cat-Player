@@ -51,10 +51,16 @@ fun PlayerScreen(
     val playMode by viewModel.playMode.collectAsState()
     val track by viewModel.currentTrack.collectAsState()
     val coverBytes by viewModel.coverArt.collectAsState()
+    val audioFormatInfo by viewModel.audioFormatInfo.collectAsState()
     val isPlaying = playerState is PlayerState.Playing
     val favoritePaths by favoritesViewModel.favoritePaths.collectAsState()
     val trackPath = (track?.smbPath ?: track?.localUri).orEmpty()
     var showLyrics by remember { mutableStateOf(false) }
+    var showAudioInfo by remember { mutableStateOf(false) }
+    var showSceneMode by remember { mutableStateOf(false) }
+    var triggerShareCard by remember { mutableStateOf(false) }
+    var triggerLyricsPoster by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
     val isFavorite = trackPath.isNotEmpty() && trackPath in favoritePaths
 
     if (showLyrics) {
@@ -90,12 +96,32 @@ fun PlayerScreen(
             TopAppBar(title = {}, navigationIcon = {
                 IconButton(onClick = onBack) { Icon(Icons.Filled.KeyboardArrowDown, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onBackground) }
             }, actions = {
-                val ctx = LocalContext.current; val t = track
+                val t = track
                 if (viewModel.lyrics.collectAsState().value.isNotEmpty()) IconButton(onClick = { showLyrics = true }) { Icon(Icons.Filled.LibraryMusic, "歌词", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
                 IconButton(onClick = { onOpenPlaylist() }) { Icon(Icons.AutoMirrored.Filled.QueueMusic, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
-                if (t != null) IconButton(onClick = {
-                    ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "${t.title} - ${t.artist}") }, "Share"))
-                }) { Icon(Icons.Filled.Share, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
+                // #10: Scene mode button
+                IconButton(onClick = { showSceneMode = true }) { Icon(Icons.Filled.Tune, "场景模式", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
+                // Share button with menu
+                var showShareMenu by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { showShareMenu = true }) { Icon(Icons.Filled.Share, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
+                    DropdownMenu(expanded = showShareMenu, onDismissRequest = { showShareMenu = false }) {
+                        DropdownMenuItem(text = { Text("分享文字") }, onClick = {
+                            t?.let { ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "${it.title} - ${it.artist}") }, "Share")) }
+                            showShareMenu = false
+                        })
+                        DropdownMenuItem(text = { Text("生成分享卡片") }, onClick = {
+                            showShareMenu = false
+                            triggerShareCard = true
+                        })
+                        if (viewModel.lyrics.collectAsState().value.isNotEmpty()) {
+                            DropdownMenuItem(text = { Text("生成歌词海报") }, onClick = {
+                                showShareMenu = false
+                                triggerLyricsPoster = true
+                            })
+                        }
+                    }
+                }
             }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
         }
     ) { padding ->
@@ -126,8 +152,29 @@ fun PlayerScreen(
                 else Icon(Icons.Filled.MusicNote, null, Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(24.dp))
+            // Title with Hi-Res badge
             AnimatedContent(targetState = track?.title ?: "", transitionSpec = { slideInHorizontally { it } + fadeIn() togetherWith slideOutHorizontally { -it } + fadeOut() }, label = "title") { title ->
-                Text(title.ifEmpty { "Unknown" }, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp), color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                    Text(title.ifEmpty { "Unknown" }, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp), color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                    // #4: Hi-Res badge
+                    if (audioFormatInfo.isHiRes) {
+                        Spacer(Modifier.width(6.dp))
+                        Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFFFFD700)) {
+                            Text("Hi-Res", Modifier.padding(horizontal = 4.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp), color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            // Audio format info button
+            if (audioFormatInfo.sampleRate > 0) {
+                TextButton(onClick = { showAudioInfo = true }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                    Text(
+                        "${audioFormatInfo.codecDisplay} · ${audioFormatInfo.sampleRateDisplay}${if (audioFormatInfo.bitDepth > 0) " · ${audioFormatInfo.bitDepthDisplay}" else ""}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
             }
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -201,6 +248,65 @@ fun PlayerScreen(
                 }
             }
             Spacer(Modifier.height(16.dp))
+        }
+    }
+
+    // #4: Audio Info Sheet dialog
+    if (showAudioInfo) {
+        AudioInfoSheet(formatInfo = audioFormatInfo, onDismiss = { showAudioInfo = false })
+    }
+
+    // #10: Scene Mode dialog
+    if (showSceneMode) {
+        SceneModeSheet(onDismiss = { showSceneMode = false })
+    }
+
+    // #7: Share card generation
+    LaunchedEffect(triggerShareCard) {
+        if (triggerShareCard) {
+            try {
+                val renderer = com.example.smbplayer.share.ShareCardRenderer(ctx)
+                val coverBmp = coverBytes?.let { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size) }
+                val path = renderer.generateShareCard(
+                    title = track?.title ?: "Unknown",
+                    artist = track?.artist ?: "Unknown",
+                    album = track?.album ?: "",
+                    coverBitmap = coverBmp
+                )
+                val file = java.io.File(path)
+                val uri = androidx.core.content.FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", file)
+                ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }, "分享卡片"))
+            } catch (_: Exception) {}
+            triggerShareCard = false
+        }
+    }
+
+    // #8: Lyrics poster generation
+    LaunchedEffect(triggerLyricsPoster) {
+        if (triggerLyricsPoster) {
+            try {
+                val renderer = com.example.smbplayer.share.LyricsPosterRenderer(ctx)
+                val coverBmp = coverBytes?.let { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size) }
+                val lyricLines = viewModel.lyrics.value.take(4).map { it.text }
+                val path = renderer.generateLyricsPoster(
+                    lyrics = lyricLines,
+                    title = track?.title ?: "Unknown",
+                    artist = track?.artist ?: "Unknown",
+                    coverBitmap = coverBmp
+                )
+                val file = java.io.File(path)
+                val uri = androidx.core.content.FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", file)
+                ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }, "歌词海报"))
+            } catch (_: Exception) {}
+            triggerLyricsPoster = false
         }
     }
 }
