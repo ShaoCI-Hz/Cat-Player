@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -133,9 +134,42 @@ fun PlayerScreen(
                 Text("${track?.artist ?: ""}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                 if (trackPath.isNotEmpty()) {
                     Spacer(Modifier.width(8.dp))
+                    // P7: Favorite with explosion animation
                     val heartScale by animateFloatAsState(if (isFavorite) 1.3f else 1f, spring(dampingRatio = 0.35f, stiffness = 500f), label = "heart")
-                    IconButton(onClick = { favoritesViewModel.toggleFavorite(trackPath) }, Modifier.size(20.dp)) {
-                        Icon(if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, null, Modifier.size(18.dp).scale(heartScale), tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    var showExplosion by remember { mutableStateOf(false) }
+                    Box(contentAlignment = Alignment.Center) {
+                        // Explosion particles
+                        if (showExplosion) {
+                            repeat(8) { index ->
+                                val angle = index * 45f
+                                val rad = Math.toRadians(angle.toDouble())
+                                val targetX = (Math.cos(rad) * 30).toFloat()
+                                val targetY = (Math.sin(rad) * 30).toFloat()
+                                val animX by animateFloatAsState(targetValue = targetX, animationSpec = tween(400, easing = FastOutSlowInEasing), label = "explosionX$index")
+                                val animY by animateFloatAsState(targetValue = targetY, animationSpec = tween(400, easing = FastOutSlowInEasing), label = "explosionY$index")
+                                val animAlpha by animateFloatAsState(targetValue = 0f, animationSpec = tween(400), label = "explosionAlpha$index")
+                                Icon(
+                                    Icons.Filled.Favorite, null,
+                                    Modifier.size(8.dp).offset(x = animX.dp, y = animY.dp).graphicsLayer(alpha = animAlpha),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        IconButton(onClick = {
+                            favoritesViewModel.toggleFavorite(trackPath)
+                            if (!isFavorite) {
+                                showExplosion = true
+                            }
+                        }, Modifier.size(24.dp)) {
+                            Icon(if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, null, Modifier.size(20.dp).scale(heartScale), tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        // Auto-hide explosion
+                        LaunchedEffect(showExplosion) {
+                            if (showExplosion) {
+                                kotlinx.coroutines.delay(450)
+                                showExplosion = false
+                            }
+                        }
                     }
                 }
             }

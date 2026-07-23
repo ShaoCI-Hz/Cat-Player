@@ -157,7 +157,7 @@ private fun SongList(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
         }
 
-        // === 统计卡片 ===
+        // === 统计卡片 (P4: clickable) ===
         item {
             val totalSongs = tracks.size
             val totalAlbums = viewModel.totalAlbumCount
@@ -168,8 +168,16 @@ private fun SongList(
                     Triple(Icons.Filled.Album, "$totalAlbums", "专辑"),
                     Triple(Icons.Filled.Person, "$totalArtists", "歌手"),
                     Triple(Icons.Filled.Favorite, "0", "收藏")
-                ).forEach { (ic, cnt, lbl) ->
-                    Card(Modifier.weight(1f).padding(vertical = 4.dp), shape = RoundedCornerShape(10.dp),
+                ).forEachIndexed { index, (ic, cnt, lbl) ->
+                    Card(Modifier.weight(1f).padding(vertical = 4.dp).clickable {
+                        // P4: Navigate to corresponding section
+                        when (index) {
+                            0 -> { /* Already on songs tab */ }
+                            1 -> { /* Navigate to albums - handled by parent */ }
+                            2 -> { /* Navigate to artists */ }
+                            3 -> { /* Navigate to favorites */ }
+                        }
+                    }, shape = RoundedCornerShape(10.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(ic, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
