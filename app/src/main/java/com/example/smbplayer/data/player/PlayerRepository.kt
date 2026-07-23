@@ -38,7 +38,8 @@ class PlayerRepository @Inject constructor(
     val crossfadeManager: CrossfadeManager
 ) {
     // Map from mediaId -> TrackInfo for SMB source resolution in playlist mode
-    private val smbTrackMap = mutableMapOf<String, TrackInfo>()
+    // Uses ConcurrentHashMap for thread safety (BUG-PR-01 fix)
+    private val smbTrackMap = java.util.concurrent.ConcurrentHashMap<String, TrackInfo>()
 
     // DataSource.Factory that handles both local and SMB sources
     private val hybridDataSourceFactory = DataSource.Factory {
@@ -179,9 +180,14 @@ class PlayerRepository @Inject constructor(
         positionJob?.cancel()
         positionJob = scope.launch {
             while (isActive) {
-                _currentPosition.value = exoPlayer.currentPosition
+                val pos = exoPlayer.currentPosition
+                _currentPosition.value = pos
                 // N1: Check for crossfade trigger
-                crossfadeManager.onPositionUpdate(exoPlayer.currentPosition, exoPlayer.duration)
+                crossfadeManager.onPositionUpdate(pos, exoPlayer.duration)
+                // BUG-PR-05 fix: Check AB loop
+                if (abPointAL >= 0 && abPointBL > abPointAL && pos >= abPointBL) {
+                    exoPlayer.seekTo(abPointAL)
+                }
                 delay(500)
             }
         }
@@ -387,16 +393,25 @@ class PlayerRepository @Inject constructor(
 
     /**
      * Apply ReplayGain to the current track based on its URI.
-     * This should be called after metadata is available.
+     * BUG-PR-04 fix: Uses baseVolume to avoid compounding across tracks.
      */
+    private var baseVolume = 1f
+
+    fun setVolumeWithGain(userVolume: Float) {
+        baseVolume = userVolume.coerceIn(0f, 1f)
+        exoPlayer.volume = baseVolume
+    }
+
     suspend fun applyReplayGain(localUri: String?) {
         if (localUri.isNullOrEmpty()) return
         val gainInfo = replayGainProcessor.extractTrackGain(localUri)
         val linearGain = replayGainProcessor.getEffectiveGain(gainInfo)
         if (linearGain != null) {
-            // Apply gain by adjusting ExoPlayer volume
-            // Note: this affects the overall volume; a more precise approach would use an AudioProcessor
-            exoPlayer.volume = (exoPlayer.volume * linearGain).coerceIn(0f, 1f)
+            // Apply gain relative to base volume, not current volume
+            exoPlayer.volume = (baseVolume * linearGain).coerceIn(0f, 1f)
+        } else {
+            // No gain info, restore base volume
+            exoPlayer.volume = baseVolume
         }
     }
 

@@ -65,8 +65,11 @@ class SmbConnectionManager @Inject constructor() {
     private var healthScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     @Volatile private var lastConfig: SmbConfig? = null
     private val healthCheckRunning = AtomicBoolean(false)
+    private val connectMutex = kotlinx.coroutines.sync.Mutex()
 
     suspend fun connect(config: SmbConfig): Result<Unit> = withContext(Dispatchers.IO) {
+        // BUG-SMB-01 fix: Prevent concurrent connect/disconnect
+        connectMutex.lock()
         try {
             _connectionState.value = ConnectionState.Connecting
             disconnect()
@@ -96,6 +99,8 @@ class SmbConnectionManager @Inject constructor() {
             disconnect(setState = false)
             _connectionState.value = ConnectionState.Error
             Result.failure(e)
+        } finally {
+            connectMutex.unlock()
         }
     }
 

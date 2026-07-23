@@ -67,6 +67,8 @@ fun LibraryScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val breadcrumbs by viewModel.breadcrumbs.collectAsState()
     val isSMBConnected by connectViewModel.isConnected.collectAsState()
+    // PERF-LS-02 fix: Use collectAsState for reactive updates
+    val currentPlayingTrack by playerViewModel.currentTrack.collectAsState()
     val context = LocalContext.current
     var hasPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED)
@@ -98,10 +100,10 @@ fun LibraryScreen(
             trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) } }
         )
         when (showTab) {
-            "songs" -> SongList(filteredTracks, isLoading, hasPermission, permLauncher, viewModel, playerViewModel, playHistory, Modifier.weight(1f))
+            "songs" -> SongList(filteredTracks, isLoading, hasPermission, permLauncher, viewModel, playerViewModel, playHistory, Modifier.weight(1f), currentPlayingTrack)
             "albums" -> if (selectedAlbum != null) AlbumDetailScreen(selectedAlbum!!, playerViewModel, onBack = { selectedAlbum = null }, Modifier.weight(1f)) else AlbumGrid(filteredAlbums, isLoading, playerViewModel, Modifier.weight(1f), { selectedAlbum = it })
             "smb" -> SmbBrowser(filteredSmb, breadcrumbs, isSMBConnected, isLoading, viewModel, playerViewModel, Modifier.weight(1f))
-            "folders" -> FolderBrowser(filteredTracks, isLoading, hasPermission, playerViewModel, Modifier.weight(1f))
+            "folders" -> FolderBrowser(filteredTracks, isLoading, hasPermission, playerViewModel, Modifier.weight(1f), currentPlayingTrack)
         }
     }
 }
@@ -125,7 +127,8 @@ private fun SongList(
     tracks: List<LocalTrack>, isLoading: Boolean, hasPermission: Boolean,
     permLauncher: androidx.activity.result.ActivityResultLauncher<String>,
     viewModel: LibraryViewModel, playerViewModel: PlayerViewModel,
-    history: List<TrackInfo>, modifier: Modifier
+    history: List<TrackInfo>, modifier: Modifier,
+    currentPlayingTrack: TrackInfo? = null
 ) {
     // P6: Shimmer skeleton loading
     if (isLoading) {
@@ -356,7 +359,7 @@ private fun SongList(
 
         // === 歌曲列表 ===
         items(sortedTracks, key = { it.id }) { track ->
-            val isCurrent = playerViewModel.currentTrack.value?.localUri == track.uri.toString()
+            val isCurrent = currentPlayingTrack?.localUri == track.uri.toString()
             var showMenu by remember { mutableStateOf(false) }
             val itemScale by animateFloatAsState(if (isCurrent) 1.02f else 1f, spring(dampingRatio = 0.7f, stiffness = 400f), label = "itemScale")
             Row(Modifier.fillMaxWidth().animateItem().scale(itemScale).combinedClickable(onClick = {
@@ -456,7 +459,8 @@ private fun SmbBrowser(entries: List<SmbFileEntry>, breadcrumbs: List<String>, i
 @Composable
 private fun FolderBrowser(
     tracks: List<LocalTrack>, isLoading: Boolean, hasPermission: Boolean,
-    playerViewModel: PlayerViewModel, modifier: Modifier
+    playerViewModel: PlayerViewModel, modifier: Modifier,
+    currentPlayingTrack: TrackInfo? = null
 ) {
     if (isLoading) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -520,7 +524,7 @@ private fun FolderBrowser(
             // Show tracks in folder
             LazyColumn(Modifier.fillMaxSize()) {
                 items(folderTracks, key = { it.id }) { track ->
-                    val isCurrent = playerViewModel.currentTrack.value?.localUri == track.uri.toString()
+                    val isCurrent = currentPlayingTrack?.localUri == track.uri.toString()
                     Row(Modifier.fillMaxWidth().animateItem().clickable {
                         val trackInfos = folderTracks.map { t -> TrackInfo(TrackSource.LOCAL, t.title, t.artist, t.album, t.durationMs, t.uri.toString()) }
                         val idx = folderTracks.indexOf(track)

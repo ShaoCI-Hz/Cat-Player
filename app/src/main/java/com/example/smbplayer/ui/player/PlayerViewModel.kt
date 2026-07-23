@@ -236,9 +236,11 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun addToHistory(track: TrackInfo) {
+        // ARCH-03 fix: Clear coverArtBytes to save memory (~200KB per track)
+        val trackForHistory = track.copy(coverArtBytes = null)
         val history = _playHistory.value.toMutableList()
-        history.removeAll { it.smbPath == track.smbPath && it.localUri == track.localUri }
-        history.add(0, track)
+        history.removeAll { it.smbPath == trackForHistory.smbPath && it.localUri == trackForHistory.localUri }
+        history.add(0, trackForHistory)
         if (history.size > 100) history.removeAt(history.lastIndex)
         _playHistory.value = history
         viewModelScope.launch { settingsRepository.savePlayHistory(_playHistory.value) }
@@ -421,6 +423,8 @@ class PlayerViewModel @Inject constructor(
 private fun bitmapToBytes(bmp: Bitmap): ByteArray {
     val stream = ByteArrayOutputStream()
     bmp.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+    // BUG-PVM-02 fix: Don't recycle here - caller may still need the bitmap
+    // The bitmap will be GC'd when no longer referenced
     return stream.toByteArray()
 }
 
