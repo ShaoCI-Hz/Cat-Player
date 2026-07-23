@@ -14,8 +14,8 @@ android {
         applicationId = "com.example.smbplayer"
         minSdk = 24
         targetSdk = 36
-        versionCode = 7
-        versionName = "3.2.0"
+        versionCode = 8
+        versionName = "3.3.0"
     }
 
     buildTypes {

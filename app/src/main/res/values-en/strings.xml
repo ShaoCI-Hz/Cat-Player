@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cat Player</string>
+    <string name="connect_title">Connect SMB Server</string>
+    <string name="host_label">Server Address</string>
+    <string name="share_label">Share Name</string>
+    <string name="username_label">Username</string>
+    <string name="password_label">Password</string>
+    <string name="connect_button">Connect</string>
+    <string name="disconnect_button">Disconnect</string>
+    <string name="library_tab">Files</string>
+    <string name="playlist_tab">Playlist</string>
+    <string name="favorites_tab">Favorites</string>
+    <string name="settings_tab">Settings</string>
+    <string name="no_music_playing">Not Playing</string>
+    <string name="unknown_artist">Unknown Artist</string>
+    <string name="unknown_album">Unknown Album</string>
+    <string name="empty_playlist">Playlist is empty. Browse files to add songs.</string>
+    <string name="empty_favorites">No favorites yet</string>
+    <string name="theme_label">Theme Mode</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_system">Follow System</string>
+    <string name="widget_description">Cat Player Desktop Control</string>
+</resources>

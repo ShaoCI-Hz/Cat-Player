@@ -5,8 +5,14 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -121,7 +127,23 @@ private fun SongList(
     viewModel: LibraryViewModel, playerViewModel: PlayerViewModel,
     history: List<TrackInfo>, modifier: Modifier
 ) {
-    if (isLoading) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(Modifier.size(48.dp)); Spacer(Modifier.height(16.dp)); Text("加载中...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; return }
+    // P6: Shimmer skeleton loading
+    if (isLoading) {
+        LazyColumn(modifier) {
+            items(8) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    ShimmerBox(Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        ShimmerBox(Modifier.fillMaxWidth(0.7f).height(16.dp).clip(RoundedCornerShape(4.dp)))
+                        Spacer(Modifier.height(6.dp))
+                        ShimmerBox(Modifier.fillMaxWidth(0.5f).height(12.dp).clip(RoundedCornerShape(4.dp)))
+                    }
+                }
+            }
+        }
+        return
+    }
     if (!hasPermission) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Filled.FolderOpen, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)); Spacer(Modifier.height(12.dp)); Text("需要媒体权限", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; return }
     if (tracks.isEmpty()) { Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Filled.MusicOff, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)); Spacer(Modifier.height(12.dp)); Text("没有本地音乐", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; return }
 
@@ -524,4 +546,24 @@ private fun FolderBrowser(
             }
         }
     }
+}
+
+/**
+ * P6: Shimmer skeleton loading placeholder
+ */
+@Composable
+private fun ShimmerBox(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shimmerAlpha"
+    )
+    Box(
+        modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha))
+    )
 }
