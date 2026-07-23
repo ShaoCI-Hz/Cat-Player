@@ -63,6 +63,7 @@ fun SettingsScreen(
         SectionCard(title = "播放", icon = Icons.Filled.PlayArrow) {
             SettingRow("默认播放模式", viewModel.playModeLabel) { viewModel.showPlayModePicker = true }
             SettingRow("播放速度", "${viewModel.playbackSpeed}x") { viewModel.showSpeedPicker = true }
+            SettingRow("淡入淡出", viewModel.crossfadeLabel, Icons.Filled.SwapHoriz) { viewModel.showCrossfadePicker = true }
         }
 
         // === 音效 ===
@@ -206,6 +207,7 @@ fun SettingsScreen(
     if (viewModel.showSpeedPicker) SpeedPicker(viewModel)
     if (viewModel.showSleepTimer) SleepTimerPicker(viewModel)
     if (viewModel.showEqualizer) EqualizerSheet(viewModel)
+    if (viewModel.showCrossfadePicker) CrossfadePicker(viewModel)
     if (viewModel.showDevicePicker) DevicePicker(viewModel)
     if (viewModel.showFolderConfig) FolderConfigDialog(viewModel)
     if (viewModel.showDurationPicker) DurationPicker(viewModel)
@@ -592,4 +594,33 @@ private fun formatDuration(ms: Long): String {
         minutes > 0 -> "${minutes}分钟"
         else -> "${seconds}秒"
     }
+}
+
+@Composable
+private fun CrossfadePicker(viewModel: SettingsViewModel) {
+    val durations = listOf(0 to "关闭", 1000 to "1秒", 2000 to "2秒", 3000 to "3秒", 5000 to "5秒")
+    AlertDialog(
+        onDismissRequest = { viewModel.showCrossfadePicker = false },
+        title = { Text("淡入淡出") },
+        text = {
+            Column {
+                Text("曲间过渡时长，0为直接切换", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                durations.forEach { (ms, label) ->
+                    Row(Modifier.fillMaxWidth().clickable {
+                        viewModel.updateCrossfadeDuration(ms)
+                        viewModel.showCrossfadePicker = false
+                    }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = viewModel.crossfadeDuration == ms, onClick = {
+                            viewModel.updateCrossfadeDuration(ms)
+                            viewModel.showCrossfadePicker = false
+                        })
+                        Spacer(Modifier.width(8.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {}
+    )
 }

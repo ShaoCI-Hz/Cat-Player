@@ -15,6 +15,7 @@ import com.example.smbplayer.data.smb.SmbDataSource
 import com.example.smbplayer.data.smb.SmbFileBrowser
 import com.example.smbplayer.data.audio.AudioEffectManager
 import com.example.smbplayer.data.audio.AudioDeviceManager
+import com.example.smbplayer.data.audio.CrossfadeManager
 import com.example.smbplayer.domain.ReplayGainProcessor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
@@ -33,7 +34,8 @@ class PlayerRepository @Inject constructor(
     private val smbFileBrowser: SmbFileBrowser,
     private val audioEffectManager: AudioEffectManager,
     val audioDeviceManager: AudioDeviceManager,
-    val replayGainProcessor: ReplayGainProcessor
+    val replayGainProcessor: ReplayGainProcessor,
+    val crossfadeManager: CrossfadeManager
 ) {
     // Map from mediaId -> TrackInfo for SMB source resolution in playlist mode
     private val smbTrackMap = mutableMapOf<String, TrackInfo>()
@@ -109,6 +111,7 @@ class PlayerRepository @Inject constructor(
 
     init {
         audioEffectManager.attachExoPlayer(exoPlayer)
+        crossfadeManager.attach(exoPlayer)
         exoPlayer.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 when (state) {
@@ -177,6 +180,8 @@ class PlayerRepository @Inject constructor(
         positionJob = scope.launch {
             while (isActive) {
                 _currentPosition.value = exoPlayer.currentPosition
+                // N1: Check for crossfade trigger
+                crossfadeManager.onPositionUpdate(exoPlayer.currentPosition, exoPlayer.duration)
                 delay(500)
             }
         }

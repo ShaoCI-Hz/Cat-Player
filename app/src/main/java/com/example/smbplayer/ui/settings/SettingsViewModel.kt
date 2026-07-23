@@ -73,6 +73,14 @@ class SettingsViewModel @Inject constructor(
         playerRepository.setPitch(pitch)
     }
 
+    // N1: Crossfade settings
+    var crossfadeDuration by mutableStateOf(0)
+    val crossfadeLabel get() = if (crossfadeDuration > 0) "${crossfadeDuration / 1000}秒" else "关闭"
+    fun updateCrossfadeDuration(ms: Int) {
+        crossfadeDuration = ms
+        playerRepository.crossfadeManager.crossfadeDurationMs = ms.toLong()
+    }
+
     var sleepTimerMins by mutableIntStateOf(0)
     val sleepTimerLabel get() = if (sleepTimerMins > 0) "${sleepTimerMins}分钟" else "关闭"
     val abLoopLabel get() = "已关闭"
@@ -85,6 +93,7 @@ class SettingsViewModel @Inject constructor(
     var showEqualizer by mutableStateOf(false)
     var showDevicePicker by mutableStateOf(false)
     var showPlayStats by mutableStateOf(false)
+    var showCrossfadePicker by mutableStateOf(false)
 
     // ReplayGain
     var replayGainEnabled by mutableStateOf(true)
