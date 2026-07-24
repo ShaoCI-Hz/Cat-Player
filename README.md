@@ -147,6 +147,12 @@ APK 输出: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## 更新日志
 
+### v3.10.3 (2026-07-24) — 代码质量优化
+- PlayerScreen modifier 链拆分，提高可读性
+- LibraryScreen 长行拆分
+- 静默吞错改为日志记录
+- AppTheme 暗色/亮色 primary 颜色统一
+
 ### v3.10.2 (2026-07-24) — UI 审查修复完成
 - 标题 letterSpacing 冲突修复
 - Hi-Res 硬编码金色改为 CatPlayerHiResGold 常量

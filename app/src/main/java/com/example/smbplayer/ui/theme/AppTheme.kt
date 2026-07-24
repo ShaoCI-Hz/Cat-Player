@@ -62,7 +62,7 @@ private val DarkScheme = darkColorScheme(
 // ========== Light Palette ==========
 
 private val LightScheme = lightColorScheme(
-    primary = Color(0xFF1DB954),
+    primary = CatPlayerGreen,  // P4-35: Unified green
     onPrimary = Color(0xFFFFFFFF),
     primaryContainer = Color(0xFFB7F0CC),
     onPrimaryContainer = Color(0xFF002114),

@@ -126,7 +126,14 @@ fun PlayerScreen(
             }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
         }
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).background(Brush.verticalGradient(listOf(bgColor.copy(alpha = 0.7f), CatPlayerBlack))).padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(Brush.verticalGradient(listOf(bgColor.copy(alpha = 0.7f), CatPlayerBlack)))
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Spacer(Modifier.height(20.dp))
             // V4: Cover art with shadow + color glow
             var volumeAdjust by remember { mutableFloatStateOf(0f) }
@@ -348,7 +355,9 @@ fun PlayerScreen(
                     putExtra(Intent.EXTRA_STREAM, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }, "分享卡片"))
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                android.util.Log.e("PlayerScreen", "Share card failed", e)
+            }
             triggerShareCard = false
         }
     }
@@ -373,7 +382,9 @@ fun PlayerScreen(
                     putExtra(Intent.EXTRA_STREAM, uri)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }, "歌词海报"))
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                android.util.Log.e("PlayerScreen", "Lyrics poster failed", e)
+            }
             triggerLyricsPoster = false
         }
     }
