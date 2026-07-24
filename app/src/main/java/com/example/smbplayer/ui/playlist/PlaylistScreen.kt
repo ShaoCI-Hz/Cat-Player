@@ -42,7 +42,7 @@ fun PlaylistScreen(
             )
             Spacer(modifier = Modifier.weight(1f))
             if (playlist.isNotEmpty()) {
-                TextButton(onClick = { playerViewModel.clearPlaylist() }) {
+                TextButton(onClick = { showClearDialog = true }) {
                     Text("清空", color = MaterialTheme.colorScheme.error)
                 }
             }
@@ -61,7 +61,7 @@ fun PlaylistScreen(
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                itemsIndexed(playlist, key = { _, t -> "${t.source}_${t.smbPath}_${t.localUri}" }) { index, track ->
+                itemsIndexed(playlist, key = { index, t -> "${index}_${t.source}_${t.smbPath}_${t.localUri}" }) { index, track ->
                     val isCurrent = index == currentIndex
                     val dismissState = rememberSwipeToDismissBoxState(
                         confirmValueChange = { value ->

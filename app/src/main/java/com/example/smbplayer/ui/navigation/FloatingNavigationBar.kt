@@ -74,7 +74,7 @@ fun FloatingNavigationBar(
 
                 val textColor by animateColorAsState(
                     if (isSelected) MaterialTheme.colorScheme.primary
-                    else Color.Transparent,
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),  // P2-25: Visible but dim
                     animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
                     label = "textColor"
                 )

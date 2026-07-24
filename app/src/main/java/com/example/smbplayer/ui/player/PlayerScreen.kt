@@ -5,8 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +36,7 @@ import coil.compose.AsyncImage
 import com.example.smbplayer.data.player.PlayMode
 import com.example.smbplayer.data.player.PlayerState
 import com.example.smbplayer.ui.favorites.FavoritesViewModel
+import com.example.smbplayer.ui.theme.CatPlayerBlack
 import com.example.smbplayer.ui.theme.PaletteUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,7 +71,7 @@ fun PlayerScreen(
             onDismiss = { showLyrics = false })
         return
     }
-    val bgColor = remember(coverBytes) { PaletteUtil.extractDarkMuted(coverBytes, Color(0xFF0A0A0A)) }
+    val bgColor = remember(coverBytes) { PaletteUtil.extractDarkMuted(coverBytes, CatPlayerBlack) }
     val playBtnScale by animateFloatAsState(if (isPlaying) 0.93f else 1f, spring(dampingRatio = 0.4f, stiffness = 600f), label = "playBtn")
 
     // P1: Cover rotation animation - rotates when playing, stops when paused
@@ -125,7 +125,7 @@ fun PlayerScreen(
             }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
         }
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).background(Brush.verticalGradient(listOf(bgColor.copy(alpha = 0.7f), Color(0xFF0A0A0A)))).padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.fillMaxSize().padding(padding).background(Brush.verticalGradient(listOf(bgColor.copy(alpha = 0.7f), CatPlayerBlack))).padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Spacer(Modifier.height(20.dp))
             // V4: Cover art with shadow + color glow
             var volumeAdjust by remember { mutableFloatStateOf(0f) }
@@ -151,27 +151,28 @@ fun PlayerScreen(
                         .rotate(if (isPlaying) coverRotation else 0f)
                         .scale(coverScale)
                         .pointerInput(Unit) {
-                            detectHorizontalDragGestures(
-                                onDragEnd = {},
-                                onDragCancel = {},
-                                onHorizontalDrag = { _, dragAmount ->
-                                    if (dragAmount > 30) {
+                            // P0-6: Single gesture handler to prevent conflict
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val absX = kotlin.math.abs(dragAmount.x)
+                                val absY = kotlin.math.abs(dragAmount.y)
+                                if (absX > absY) {
+                                    // Horizontal drag - change track
+                                    if (dragAmount.x > 30) {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         viewModel.prev()
-                                    } else if (dragAmount < -30) {
+                                    } else if (dragAmount.x < -30) {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         viewModel.next()
                                     }
-                                }
-                            )
-                        }
-                        .pointerInput(Unit) {
-                            detectVerticalDragGestures { _, dragAmount ->
-                                volumeAdjust = (-dragAmount / 400f).coerceIn(-0.15f, 0.15f)
-                                val newVol = (viewModel.volume.value + volumeAdjust).coerceIn(0f, 1f)
-                                viewModel.setVolume(newVol)
-                                if (kotlin.math.abs(dragAmount) > 20) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                } else {
+                                    // Vertical drag - adjust volume
+                                    volumeAdjust = (-dragAmount.y / 400f).coerceIn(-0.15f, 0.15f)
+                                    val newVol = (viewModel.volume.value + volumeAdjust).coerceIn(0f, 1f)
+                                    viewModel.setVolume(newVol)
+                                    if (kotlin.math.abs(dragAmount.y) > 20) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    }
                                 }
                             }
                         },
@@ -237,8 +238,8 @@ fun PlayerScreen(
                             if (!isFavorite) {
                                 showExplosion = true
                             }
-                        }, Modifier.size(24.dp)) {
-                            Icon(if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, null, Modifier.size(20.dp).scale(heartScale), tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }, Modifier.size(48.dp)) {  // P2-21: Minimum touch target
+                            Icon(if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder, null, Modifier.size(22.dp).scale(heartScale), tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         // Auto-hide explosion
                         LaunchedEffect(showExplosion) {

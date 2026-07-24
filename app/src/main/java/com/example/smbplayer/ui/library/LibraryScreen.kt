@@ -279,7 +279,9 @@ private fun SongList(
         }
         if (tracks.isNotEmpty()) {
             item {
-                val picks = remember { tracks.shuffled(java.util.Random(0)).take(10) }
+                // P3-26: Use date-based seed for daily variation
+                val today = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR).toLong() }
+                val picks = remember(today) { tracks.shuffled(java.util.Random(today)).take(10) }
                 LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(picks, key = { it.id }) { track ->
                         Card(Modifier.width(130.dp).clickable {
@@ -385,7 +387,10 @@ private fun SongList(
             }
             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                 DropdownMenuItem(text = { Text("播放") }, onClick = { playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString())); showMenu = false })
-                DropdownMenuItem(text = { Text("添加到队列") }, onClick = { showMenu = false })
+                DropdownMenuItem(text = { Text("添加到队列") }, onClick = {
+                    playerViewModel.addToPlaylist(listOf(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString())))
+                    showMenu = false
+                })
             }
         }
     }

@@ -55,11 +55,16 @@ fun SmbPlayerAppContent() {
 
     val playerState by playerViewModel.playerState.collectAsState()
 
-    // #11: Onboarding check
-    var showOnboarding by remember { mutableStateOf(true) }
+    // P0-1: Onboarding with persistence
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { context.getSharedPreferences("cat_player_prefs", android.content.Context.MODE_PRIVATE) }
+    var showOnboarding by remember { mutableStateOf(!prefs.getBoolean("onboarding_completed", false)) }
 
     if (showOnboarding) {
-        OnboardingScreen(onComplete = { showOnboarding = false })
+        OnboardingScreen(onComplete = {
+            prefs.edit().putBoolean("onboarding_completed", true).apply()
+            showOnboarding = false
+        })
         return
     }
 

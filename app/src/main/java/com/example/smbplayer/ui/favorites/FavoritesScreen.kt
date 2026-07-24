@@ -90,7 +90,7 @@ fun FavoritesScreen(
                         Icon(
                             Icons.Filled.Favorite,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))

@@ -89,7 +89,7 @@ fun PlayerBar(
                     AnimatedContent(targetState = t.title, label = "title") { title ->
                         Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onBackground)
+                            color = MaterialTheme.colorScheme.onSurface)  // P1-18: Use onSurface for surface layer
                     }
                     AnimatedContent(targetState = t.artist, label = "artist") { artist ->
                         Text(artist, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -109,7 +109,7 @@ fun PlayerBar(
                         Icon(
                             if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             null, Modifier.size(28.dp),
-                            tint = MaterialTheme.colorScheme.onBackground
+                            tint = MaterialTheme.colorScheme.onSurface  // P1-18
                         )
                     }
                 }

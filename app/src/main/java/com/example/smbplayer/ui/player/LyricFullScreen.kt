@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smbplayer.data.lyrics.LyricLine
+import com.example.smbplayer.ui.theme.CatPlayerBlack
 
 @Composable
 fun LyricFullScreen(
@@ -63,7 +64,7 @@ fun LyricFullScreen(
             c.getOrElse(0) { Color(0xFF1A1C2E) },
             c.getOrElse(1) { Color(0xFF3B1D5E) },
             c.getOrElse(2) { Color(0xFF0D1117) }
-        ).map { it.copy(alpha = 0.85f) } + listOf(Color(0xFF0A0A0A).copy(alpha = 0.95f))
+        ).map { it.copy(alpha = 0.85f) } + listOf(CatPlayerBlack.copy(alpha = 0.95f))
     }
 
     // Auto-invert text color based on background brightness
@@ -93,7 +94,7 @@ fun LyricFullScreen(
     }
 
     Box(
-        modifier = modifier.fillMaxSize().background(Color(0xFF0A0A0A))
+        modifier = modifier.fillMaxSize().background(CatPlayerBlack)
     ) {
         // Background: album-art-derived gradient with slow drift
         Box(
@@ -121,7 +122,7 @@ fun LyricFullScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFF0A0A0A).copy(alpha = 0.3f), Color.Transparent, Color(0xFF0A0A0A).copy(alpha = 0.6f))
+                        colors = listOf(CatPlayerBlack.copy(alpha = 0.3f), Color.Transparent, CatPlayerBlack.copy(alpha = 0.6f))
                     )
                 )
         )
@@ -185,7 +186,7 @@ fun LyricFullScreen(
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color(0xFF0A0A0A).copy(alpha = 0.7f), Color(0xFF0A0A0A).copy(alpha = 0.9f))
+                        colors = listOf(Color.Transparent, CatPlayerBlack.copy(alpha = 0.7f), CatPlayerBlack.copy(alpha = 0.9f))
                     )
                 )
                 .padding(top = 20.dp, bottom = 12.dp)
