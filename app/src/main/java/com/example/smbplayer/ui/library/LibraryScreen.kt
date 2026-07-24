@@ -207,13 +207,6 @@ private fun SongList(
             val totalAlbums = viewModel.totalAlbumCount
             val totalArtists = viewModel.totalArtistCount
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Gradient card colors for each stat
-                val cardColors = listOf(
-                    listOf(Color(0xFF1ED760), Color(0xFF0D8A3D)),  // Green
-                    listOf(Color(0xFF4A90FF), Color(0xFF2563EB)),  // Blue
-                    listOf(Color(0xFFFF6B6B), Color(0xFFE53E3E)),  // Red
-                    listOf(Color(0xFFFFD700), Color(0xFFB8860B))   // Gold
-                )
                 listOf(
                     Triple(Icons.Filled.MusicNote, "$totalSongs", "歌曲"),
                     Triple(Icons.Filled.Album, "$totalAlbums", "专辑"),
@@ -221,29 +214,16 @@ private fun SongList(
                     Triple(Icons.Filled.Favorite, "0", "收藏")
                 ).forEachIndexed { index, (ic, cnt, lbl) ->
                     Card(
-                        Modifier.weight(1f).padding(vertical = 4.dp).clickable {
-                            when (index) {
-                                0 -> { }
-                                1 -> { }
-                                2 -> { }
-                                3 -> { }
-                            }
-                        },
+                        Modifier.weight(1f).padding(vertical = 4.dp).clickable {},
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().background(
-                                Brush.linearGradient(cardColors.getOrElse(index) { cardColors[0] })
-                            ).padding(12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(ic, null, Modifier.size(22.dp), tint = Color.White.copy(alpha = 0.9f))
-                                Spacer(Modifier.height(6.dp))
-                                Text(cnt, style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
-                                Text(lbl, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
-                            }
+                        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(ic, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.height(6.dp))
+                            Text(cnt, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                            Text(lbl, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
