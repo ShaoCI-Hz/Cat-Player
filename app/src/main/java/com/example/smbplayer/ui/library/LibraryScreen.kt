@@ -82,7 +82,7 @@ fun LibraryScreen(
     var selectedAlbum by remember { mutableStateOf<AlbumEntry?>(null) }
     val filteredTracks = remember(localTracks, searchQuery) { localTracks.filter { searchQuery.isEmpty() || it.title.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true) } }
     val filteredAlbums = remember(albums, searchQuery) { albums.filter { searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true) } }
-    val filteredSmb = smbEntries.filter { searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true) }
+    val filteredSmb = remember(smbEntries, searchQuery) { smbEntries.filter { searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true) } }
     val playHistory by playerViewModel.playHistory.collectAsState()
 
     Column(modifier) {
@@ -226,7 +226,9 @@ private fun SongList(
                     "音乐给宇宙注入了灵魂 — 柏拉图",
                     "音乐的魅力在于，它触动你时，你感受不到痛苦 — 鲍勃·马利"
                 )
-                Text(quotes[java.util.Random().nextInt(quotes.size)], Modifier.padding(14.dp),
+                // PERF-LS-04 fix: Use remember to keep quote stable across recompositions
+                val quote = remember { quotes[java.util.Random().nextInt(quotes.size)] }
+                Text(quote, Modifier.padding(14.dp),
                     style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
             }
         }
@@ -361,8 +363,8 @@ private fun SongList(
         items(sortedTracks, key = { it.id }) { track ->
             val isCurrent = currentPlayingTrack?.localUri == track.uri.toString()
             var showMenu by remember { mutableStateOf(false) }
-            val itemScale by animateFloatAsState(if (isCurrent) 1.02f else 1f, spring(dampingRatio = 0.7f, stiffness = 400f), label = "itemScale")
-            Row(Modifier.fillMaxWidth().animateItem().scale(itemScale).combinedClickable(onClick = {
+            // PERF-LS-05 fix: Remove per-item animation, use static highlight instead
+            Row(Modifier.fillMaxWidth().animateItem().combinedClickable(onClick = {
                 playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString()))
             }, onLongClick = { showMenu = true }).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 AnimatedVisibility(visible = isCurrent, enter = fadeIn() + expandHorizontally(), exit = fadeOut() + shrinkHorizontally()) {

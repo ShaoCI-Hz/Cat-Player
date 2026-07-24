@@ -98,19 +98,23 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             playAudioUseCase.metadataUpdates.collect { metadata ->
                 if (metadata != null) {
-                    _currentTrack.value = _currentTrack.value?.copy(
-                        title = metadata.title ?: _currentTrack.value?.title ?: "未知曲目",
-                        artist = metadata.artist ?: _currentTrack.value?.artist ?: "未知艺术家",
-                        album = metadata.album ?: _currentTrack.value?.album ?: "未知专辑",
-                        durationMs = metadata.durationMs ?: _currentTrack.value?.durationMs ?: 0,
-                        coverArtBytes = metadata.coverArt?.let { bitmapToBytes(it) } ?: _currentTrack.value?.coverArtBytes,
-                    )
-                    metadata.coverArt?.let { bitmap ->
-                        _coverArt.value = bitmapToBytes(bitmap)
-                    }
-                    // Parse embedded lyrics from metadata
-                    if (!metadata.lyrics.isNullOrBlank()) {
-                        _lyrics.value = parseLyrics(metadata.lyrics)
+                    // BUG-PVM-04 fix: Only update if metadata is for the current track
+                    val currentUri = _currentTrack.value?.localUri ?: _currentTrack.value?.smbPath
+                    if (currentUri != null) {
+                        _currentTrack.value = _currentTrack.value?.copy(
+                            title = metadata.title ?: _currentTrack.value?.title ?: "未知曲目",
+                            artist = metadata.artist ?: _currentTrack.value?.artist ?: "未知艺术家",
+                            album = metadata.album ?: _currentTrack.value?.album ?: "未知专辑",
+                            durationMs = metadata.durationMs ?: _currentTrack.value?.durationMs ?: 0,
+                            coverArtBytes = metadata.coverArt?.let { bitmapToBytes(it) } ?: _currentTrack.value?.coverArtBytes,
+                        )
+                        metadata.coverArt?.let { bitmap ->
+                            _coverArt.value = bitmapToBytes(bitmap)
+                        }
+                        // Parse embedded lyrics from metadata
+                        if (!metadata.lyrics.isNullOrBlank()) {
+                            _lyrics.value = parseLyrics(metadata.lyrics)
+                        }
                     }
                 }
             }

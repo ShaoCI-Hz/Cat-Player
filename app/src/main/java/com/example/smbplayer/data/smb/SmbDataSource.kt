@@ -36,8 +36,12 @@ class SmbDataSource(
 
         bytesRemaining = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
             dataSpec.length
-        } else {
+        } else if (fileSize > 0) {
             fileSize - dataSpec.position
+        } else {
+            // BUG-PVM-05 fix: When fileSize is unknown, use a large value
+            // and let read() return END_OF_INPUT when stream ends
+            Long.MAX_VALUE
         }
 
         transferStarted(dataSpec)
