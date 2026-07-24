@@ -69,7 +69,7 @@ fun FavoritesScreen(
                     val source = if (isLocal) TrackSource.LOCAL else TrackSource.SMB
                     val fileName = path.substringAfterLast('/')
                     val dashIdx = fileName.indexOf(" - "); val title = if (dashIdx > 0) fileName.substring(dashIdx + 3).substringBeforeLast('.') else fileName.substringBeforeLast('.'); val guessArtist = if (dashIdx > 0) fileName.substring(0, dashIdx) else ""
-                    val displayPath = if (isLocal) "本地文件" else path
+                    val displayPath = if (isLocal) "本地文件" else fileName  // P3-29: Show only filename
                     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Row(
                         modifier = Modifier

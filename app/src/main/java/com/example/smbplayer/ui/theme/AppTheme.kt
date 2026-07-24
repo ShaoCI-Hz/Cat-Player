@@ -94,11 +94,11 @@ private val LightScheme = lightColorScheme(
 // ========== Shapes (V3: Larger radii for modern look) ==========
 
 val AppShapes = Shapes(
-    extraSmall = RoundedCornerShape(6.dp),    // was 4dp
-    small = RoundedCornerShape(8.dp),         // was 6dp
-    medium = RoundedCornerShape(14.dp),       // was 10dp
-    large = RoundedCornerShape(20.dp),        // was 12dp
-    extraLarge = RoundedCornerShape(28.dp),   // was 20dp
+    extraSmall = RoundedCornerShape(6.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
 // ========== Typography (V1: Better spacing and weights) ==========

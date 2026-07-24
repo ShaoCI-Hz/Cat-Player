@@ -125,17 +125,17 @@ fun PlaylistScreen(
                         Column {
                             IconButton(
                                 onClick = { if (index > 0) playerViewModel.moveInPlaylist(index, index - 1) },
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier.size(40.dp),
                                 enabled = index > 0
                             ) {
-                                Icon(Icons.Filled.KeyboardArrowUp, "上移", Modifier.size(16.dp))
+                                Icon(Icons.Filled.KeyboardArrowUp, "上移", Modifier.size(18.dp))
                             }
                             IconButton(
                                 onClick = { if (index < playlist.size - 1) playerViewModel.moveInPlaylist(index, index + 1) },
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier.size(40.dp),
                                 enabled = index < playlist.size - 1
                             ) {
-                                Icon(Icons.Filled.KeyboardArrowDown, "下移", Modifier.size(16.dp))
+                                Icon(Icons.Filled.KeyboardArrowDown, "下移", Modifier.size(18.dp))
                             }
                         }
                     }

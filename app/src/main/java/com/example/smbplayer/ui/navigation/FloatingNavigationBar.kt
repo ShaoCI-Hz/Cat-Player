@@ -88,7 +88,7 @@ fun FloatingNavigationBar(
                             indication = null,
                             role = Role.Tab,
                             onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)  // P3-30: Correct type for tap
                                 onTabSelected(index)
                             }
                         )

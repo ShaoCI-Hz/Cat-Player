@@ -304,7 +304,7 @@ private fun PlayModePicker(viewModel: SettingsViewModel) {
         text = {
             Column {
                 listOf("顺序播放", "随机播放", "单曲循环", "列表循环").forEachIndexed { i, label ->
-                    Row(Modifier.fillMaxWidth().clickable { viewModel.pickPlayMode(i); viewModel.showPlayModePicker = false }.padding(vertical = 8.dp)) {
+                    Row(Modifier.fillMaxWidth().clickable { viewModel.pickPlayMode(i); viewModel.showPlayModePicker = false }.padding(vertical = 12.dp)) {
                         RadioButton(selected = viewModel.playModeIdx == i, onClick = { viewModel.pickPlayMode(i); viewModel.showPlayModePicker = false })
                         Text(label, Modifier.padding(start = 8.dp))
                     }
@@ -323,7 +323,7 @@ private fun SpeedPicker(viewModel: SettingsViewModel) {
         text = {
             Column {
                 listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { s ->
-                    Row(Modifier.fillMaxWidth().clickable { viewModel.pickSpeed(s); viewModel.showSpeedPicker = false }.padding(vertical = 8.dp)) {
+                    Row(Modifier.fillMaxWidth().clickable { viewModel.pickSpeed(s); viewModel.showSpeedPicker = false }.padding(vertical = 12.dp)) {
                         RadioButton(selected = viewModel.playbackSpeed == s, onClick = { viewModel.pickSpeed(s); viewModel.showSpeedPicker = false })
                         Text("${s}x", Modifier.padding(start = 8.dp))
                     }
@@ -342,7 +342,7 @@ private fun SleepTimerPicker(viewModel: SettingsViewModel) {
         text = {
             Column {
                 listOf(0 to "关闭", 15 to "15分钟", 30 to "30分钟", 45 to "45分钟", 60 to "60分钟").forEach { (mins, label) ->
-                    Row(Modifier.fillMaxWidth().clickable { viewModel.pickSleepTimer(mins); viewModel.showSleepTimer = false }.padding(vertical = 8.dp)) {
+                    Row(Modifier.fillMaxWidth().clickable { viewModel.pickSleepTimer(mins); viewModel.showSleepTimer = false }.padding(vertical = 12.dp)) {
                         RadioButton(selected = viewModel.sleepTimerMins == mins, onClick = { viewModel.pickSleepTimer(mins); viewModel.showSleepTimer = false })
                         Text(label, Modifier.padding(start = 8.dp))
                     }

@@ -191,7 +191,7 @@ fun PlayerScreen(
                     if (audioFormatInfo.isHiRes) {
                         Spacer(Modifier.width(6.dp))
                         Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFFFFD700)) {
-                            Text("Hi-Res", Modifier.padding(horizontal = 4.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp), color = Color.Black, fontWeight = FontWeight.Bold)
+                            Text("Hi-Res", Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = Color.Black, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -199,7 +199,7 @@ fun PlayerScreen(
             Spacer(Modifier.height(4.dp))
             // Audio format info button
             if (audioFormatInfo.sampleRate > 0) {
-                TextButton(onClick = { showAudioInfo = true }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                TextButton(onClick = { showAudioInfo = true }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
                     Text(
                         "${audioFormatInfo.codecDisplay} · ${audioFormatInfo.sampleRateDisplay}${if (audioFormatInfo.bitDepth > 0) " · ${audioFormatInfo.bitDepthDisplay}" else ""}",
                         style = MaterialTheme.typography.labelSmall,
