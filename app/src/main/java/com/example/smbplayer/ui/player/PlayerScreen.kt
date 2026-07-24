@@ -135,20 +135,20 @@ fun PlayerScreen(
 
             Spacer(Modifier.weight(0.5f))
 
-            // Cover art - rounded rectangle with shadow
+            // Cover art - circular for smooth rotation
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(260.dp)) {
-                // Color glow
+                // Color glow behind cover
                 if (coverBytes != null) {
-                    Box(Modifier.size(240.dp).clip(RoundedCornerShape(32.dp)).background(
-                        Brush.radialGradient(listOf(bgColor.copy(alpha = 0.5f), Color.Transparent))
+                    Box(Modifier.size(240.dp).clip(CircleShape).background(
+                        Brush.radialGradient(listOf(bgColor.copy(alpha = 0.6f), Color.Transparent))
                     ))
                 }
-                // Cover
+                // Circular cover - rotation looks natural
                 Box(
                     Modifier.size(240.dp)
                         .graphicsLayer {
                             shadowElevation = 20f
-                            shape = RoundedCornerShape(24.dp)
+                            shape = CircleShape
                             clip = true
                         }
                         .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -170,7 +170,7 @@ fun PlayerScreen(
                         },
                     Alignment.Center
                 ) {
-                    if (coverBytes != null) AsyncImage(model = coverBytes, null, Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)), contentScale = ContentScale.Crop)
+                    if (coverBytes != null) AsyncImage(model = coverBytes, null, Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
                     else Icon(Icons.Filled.MusicNote, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
