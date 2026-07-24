@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.smbplayer.data.player.PlayMode
 import com.example.smbplayer.data.player.PlayerState
+import com.example.smbplayer.ui.common.formatTime
 import com.example.smbplayer.ui.favorites.FavoritesViewModel
 import com.example.smbplayer.ui.theme.CatPlayerBlack
 import com.example.smbplayer.ui.theme.CatPlayerHiResGold
@@ -379,5 +380,3 @@ private fun PlayerProgress(viewModel: PlayerViewModel) {
         }
     }
 }
-
-private fun formatTime(ms: Long): String { val s = ms / 1000; return "${s / 60}:${(s % 60).toString().padStart(2, '0')}" }

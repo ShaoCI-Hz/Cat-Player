@@ -78,12 +78,12 @@ class PlayerRepository @Inject constructor(
         .setLoadControl(
             DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                    50_000,  // minBufferMs
-                    100_000, // maxBufferMs
-                    10_000,  // bufferForPlaybackMs
-                    15_000   // bufferForPlaybackAfterRebufferMs
+                    15_000,  // minBufferMs (was 50s, now 15s)
+                    30_000,  // maxBufferMs (was 100s, now 30s)
+                    2_500,   // bufferForPlaybackMs (was 10s, now 2.5s)
+                    5_000    // bufferForPlaybackAfterRebufferMs (was 15s, now 5s)
                 )
-                .setTargetBufferBytes(10 * 1024 * 1024) // 10MB
+                .setTargetBufferBytes(2 * 1024 * 1024) // 2MB (was 10MB)
                 .build()
         )
         .build()
@@ -184,11 +184,11 @@ class PlayerRepository @Inject constructor(
                 _currentPosition.value = pos
                 // N1: Check for crossfade trigger
                 crossfadeManager.onPositionUpdate(pos, exoPlayer.duration)
-                // BUG-PR-05 fix: Check AB loop
+                // AB loop check
                 if (abPointAL >= 0 && abPointBL > abPointAL && pos >= abPointBL) {
                     exoPlayer.seekTo(abPointAL)
                 }
-                delay(500)
+                delay(1000) // Changed from 500ms to 1000ms
             }
         }
     }

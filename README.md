@@ -147,6 +147,12 @@ APK 输出: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## 更新日志
 
+### v3.12.0 (2026-07-24) — 代码优化
+- ExoPlayer 缓冲优化：50-100s → 15-30s，10MB → 2MB
+- 位置轮询间隔：500ms → 1000ms，减少 CPU 唤醒
+- 提取共享 formatTime/formatDuration 工具函数
+- 修复 PlayerScreen 中重复的 formatTime 定义
+
 ### v3.11.1 (2026-07-24) — 封面修复
 - 封面改回圆形，旋转时不再露出白色背景
 - 光晕效果同步改为圆形
