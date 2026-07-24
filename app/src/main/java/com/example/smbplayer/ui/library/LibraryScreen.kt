@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -206,27 +207,43 @@ private fun SongList(
             val totalAlbums = viewModel.totalAlbumCount
             val totalArtists = viewModel.totalArtistCount
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Gradient card colors for each stat
+                val cardColors = listOf(
+                    listOf(Color(0xFF1ED760), Color(0xFF0D8A3D)),  // Green
+                    listOf(Color(0xFF4A90FF), Color(0xFF2563EB)),  // Blue
+                    listOf(Color(0xFFFF6B6B), Color(0xFFE53E3E)),  // Red
+                    listOf(Color(0xFFFFD700), Color(0xFFB8860B))   // Gold
+                )
                 listOf(
                     Triple(Icons.Filled.MusicNote, "$totalSongs", "歌曲"),
                     Triple(Icons.Filled.Album, "$totalAlbums", "专辑"),
                     Triple(Icons.Filled.Person, "$totalArtists", "歌手"),
                     Triple(Icons.Filled.Favorite, "0", "收藏")
                 ).forEachIndexed { index, (ic, cnt, lbl) ->
-                    Card(Modifier.weight(1f).padding(vertical = 4.dp).clickable {
-                        // P4: Navigate to corresponding section
-                        when (index) {
-                            0 -> { /* Already on songs tab */ }
-                            1 -> { /* Navigate to albums - handled by parent */ }
-                            2 -> { /* Navigate to artists */ }
-                            3 -> { /* Navigate to favorites */ }
-                        }
-                    }, shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                        Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(ic, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
-                            Spacer(Modifier.height(4.dp))
-                            Text(cnt, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onBackground)
-                            Text(lbl, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Card(
+                        Modifier.weight(1f).padding(vertical = 4.dp).clickable {
+                            when (index) {
+                                0 -> { }
+                                1 -> { }
+                                2 -> { }
+                                3 -> { }
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().background(
+                                Brush.linearGradient(cardColors.getOrElse(index) { cardColors[0] })
+                            ).padding(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(ic, null, Modifier.size(22.dp), tint = Color.White.copy(alpha = 0.9f))
+                                Spacer(Modifier.height(6.dp))
+                                Text(cnt, style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(lbl, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
+                            }
                         }
                     }
                 }
