@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 
 val CatPlayerGreen = Color(0xFF1ED760)
 val CatPlayerBlack = Color(0xFF0A0A0A)
+val CatPlayerHiResGold = Color(0xFFFFD700)  // Hi-Res badge color
 val CatPlayerSurface = Color(0xFF121212)
 val CatPlayerCard = Color(0xFF252525)       // V2: Increased contrast (was #181818)
 val CatPlayerElevated = Color(0xFF2A2A2A)   // V2: Better elevation distinction

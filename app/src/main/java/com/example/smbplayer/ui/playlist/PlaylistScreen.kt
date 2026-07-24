@@ -74,8 +74,8 @@ fun PlaylistScreen(
                     SwipeToDismissBox(
                         state = dismissState,
                         backgroundContent = {
-                            Box(Modifier.fillMaxSize().background(Color(0xFFFF4444)), Alignment.CenterEnd) {
-                                Icon(Icons.Filled.Delete, "删除", Modifier.padding(end = 20.dp), tint = Color.White)
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.error), Alignment.CenterEnd) {
+                                Icon(Icons.Filled.Delete, "删除", Modifier.padding(end = 20.dp), tint = MaterialTheme.colorScheme.onError)
                             }
                         },
                         enableDismissFromStartToEnd = false,

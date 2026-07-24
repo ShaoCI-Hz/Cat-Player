@@ -147,6 +147,14 @@ APK 输出: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## 更新日志
 
+### v3.10.2 (2026-07-24) — UI 审查修复完成
+- 标题 letterSpacing 冲突修复
+- Hi-Res 硬编码金色改为 CatPlayerHiResGold 常量
+- 滑动删除使用主题 error 色
+- 圆角统一使用 MaterialTheme.shapes
+- 均衡器改为 ModalBottomSheet 防止溢出
+- 收藏页圆角统一
+
 ### v3.10.1 (2026-07-24) — UI 审查修复续
 - Hi-Res 标签字体增大到 10sp
 - 音频信息按钮触摸区域增大

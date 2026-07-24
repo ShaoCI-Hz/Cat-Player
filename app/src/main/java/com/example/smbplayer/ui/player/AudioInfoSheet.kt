@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.smbplayer.data.audio.AudioFormatDetector
+import com.example.smbplayer.ui.theme.CatPlayerHiResGold
 
 /**
  * Audio format information sheet showing codec, bitrate, sample rate, etc.
@@ -30,7 +31,7 @@ fun AudioInfoSheet(
                     Spacer(Modifier.width(8.dp))
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFFFFD700)
+                        color = CatPlayerHiResGold
                     ) {
                         Text(
                             "Hi-Res",
@@ -50,7 +51,7 @@ fun AudioInfoSheet(
                     Card(
                         shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (formatInfo.isHiRes) Color(0xFFFFD700).copy(alpha = 0.15f)
+                            containerColor = if (formatInfo.isHiRes) CatPlayerHiResGold.copy(alpha = 0.15f)
                             else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                         )
                     ) {
@@ -61,7 +62,7 @@ fun AudioInfoSheet(
                             Icon(
                                 if (formatInfo.isHiRes) Icons.Filled.Star else Icons.Filled.MusicNote,
                                 null,
-                                tint = if (formatInfo.isHiRes) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary
+                                tint = if (formatInfo.isHiRes) CatPlayerHiResGold else MaterialTheme.colorScheme.primary
                             )
                             Spacer(Modifier.width(8.dp))
                             Column {
@@ -69,7 +70,7 @@ fun AudioInfoSheet(
                                     formatInfo.qualityBadge,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (formatInfo.isHiRes) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary
+                                    color = if (formatInfo.isHiRes) CatPlayerHiResGold else MaterialTheme.colorScheme.primary
                                 )
                                 if (formatInfo.isHiRes) {
                                     Text(

@@ -37,6 +37,7 @@ import com.example.smbplayer.data.player.PlayMode
 import com.example.smbplayer.data.player.PlayerState
 import com.example.smbplayer.ui.favorites.FavoritesViewModel
 import com.example.smbplayer.ui.theme.CatPlayerBlack
+import com.example.smbplayer.ui.theme.CatPlayerHiResGold
 import com.example.smbplayer.ui.theme.PaletteUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -186,11 +187,11 @@ fun PlayerScreen(
             // Title with Hi-Res badge
             AnimatedContent(targetState = track?.title ?: "", transitionSpec = { slideInHorizontally { it } + fadeIn() togetherWith slideOutHorizontally { -it } + fadeOut() }, label = "title") { title ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                    Text(title.ifEmpty { "Unknown" }, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp), color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+                    Text(title.ifEmpty { "Unknown" }, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                     // #4: Hi-Res badge
                     if (audioFormatInfo.isHiRes) {
                         Spacer(Modifier.width(6.dp))
-                        Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFFFFD700)) {
+                        Surface(shape = RoundedCornerShape(4.dp), color = CatPlayerHiResGold) {
                             Text("Hi-Res", Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp), color = Color.Black, fontWeight = FontWeight.Bold)
                         }
                     }

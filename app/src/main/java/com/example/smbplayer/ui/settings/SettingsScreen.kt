@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -356,100 +357,110 @@ private fun SleepTimerPicker(viewModel: SettingsViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EqualizerSheet(viewModel: SettingsViewModel) {
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = { viewModel.showEqualizer = false },
-        title = { Text("均衡器", style = MaterialTheme.typography.headlineSmall) },
-        text = {
-            Column {
-                // Presets - horizontal scrollable chips
-                Text("预设模式", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(8.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(viewModel.eqPresetCount) { i ->
-                        FilterChip(
-                            selected = viewModel.eqCurrentPreset == i,
-                            onClick = { viewModel.setEqPreset(i) },
-                            label = { Text(viewModel.eqPresetName(i), style = MaterialTheme.typography.labelMedium) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        )
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(12.dp))
-                // #5: EQ Visualizer - bar chart showing current levels
-                Text("频响曲线", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(8.dp))
-                Canvas(Modifier.fillMaxWidth().height(80.dp)) {
-                    val barCount = viewModel.eqBandCount
-                    if (barCount > 0) {
-                        val barWidth = size.width / barCount * 0.7f
-                        val gap = size.width / barCount * 0.3f
-                        val range = viewModel.eqBandRange
-                        val midY = size.height / 2
+        dragHandle = {}
+    ) {
+        Column(
+            Modifier.fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text("均衡器", style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(bottom = 12.dp))
 
-                        for (i in 0 until barCount) {
-                            val level = viewModel.eqBandLevel(i).toFloat()
-                            val normalizedHeight = (level - range.first()) / (range.last() - range.first()) * size.height * 0.4f
-                            val x = i * (barWidth + gap) + gap / 2
-
-                            // Bar
-                            drawLine(
-                                color = androidx.compose.ui.graphics.Color(0xFF1ED760).copy(alpha = 0.7f),
-                                start = androidx.compose.ui.geometry.Offset(x + barWidth / 2, midY),
-                                end = androidx.compose.ui.geometry.Offset(x + barWidth / 2, midY - normalizedHeight),
-                                strokeWidth = barWidth,
-                                cap = androidx.compose.ui.graphics.StrokeCap.Round
-                            )
-                        }
-                        // Center line
-                        drawLine(
-                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f),
-                            start = androidx.compose.ui.geometry.Offset(0f, midY),
-                            end = androidx.compose.ui.geometry.Offset(size.width, midY),
-                            strokeWidth = 1f
+            // Presets
+            Text("预设模式", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(viewModel.eqPresetCount) { i ->
+                    FilterChip(
+                        selected = viewModel.eqCurrentPreset == i,
+                        onClick = { viewModel.setEqPreset(i) },
+                        label = { Text(viewModel.eqPresetName(i), style = MaterialTheme.typography.labelMedium) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                         )
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                // Manual bands
-                Text("手动调节", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.height(8.dp))
-                repeat(viewModel.eqBandCount) { band ->
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
-                        val freq = viewModel.eqCenterFreq(band)
-                        Text(
-                            if (freq >= 1000) "${freq / 1000}K" else "${freq}Hz",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.width(40.dp)
-                        )
-                        Slider(
-                            value = viewModel.eqBandLevel(band).toFloat(),
-                            onValueChange = { viewModel.setEqBand(band, it.toInt()) },
-                            modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
-                            valueRange = viewModel.eqBandRange.first().toFloat()..viewModel.eqBandRange.last().toFloat(),
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                        Text(
-                            "${viewModel.eqBandLevel(band)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.width(36.dp),
-                            textAlign = TextAlign.End
-                        )
-                    }
+                    )
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = { viewModel.showEqualizer = false }) { Text("完成") } }
-    )
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+
+            // EQ Visualizer
+            Text("频响曲线", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(8.dp))
+            Canvas(Modifier.fillMaxWidth().height(80.dp)) {
+                val barCount = viewModel.eqBandCount
+                if (barCount > 0) {
+                    val barWidth = size.width / barCount * 0.7f
+                    val gap = size.width / barCount * 0.3f
+                    val range = viewModel.eqBandRange
+                    val midY = size.height / 2
+                    for (i in 0 until barCount) {
+                        val level = viewModel.eqBandLevel(i).toFloat()
+                        val normalizedHeight = (level - range.first()) / (range.last() - range.first()) * size.height * 0.4f
+                        val x = i * (barWidth + gap) + gap / 2
+                        drawLine(
+                            color = Color(0xFF1ED760).copy(alpha = 0.7f),
+                            start = androidx.compose.ui.geometry.Offset(x + barWidth / 2, midY),
+                            end = androidx.compose.ui.geometry.Offset(x + barWidth / 2, midY - normalizedHeight),
+                            strokeWidth = barWidth,
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                    }
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.2f),
+                        start = androidx.compose.ui.geometry.Offset(0f, midY),
+                        end = androidx.compose.ui.geometry.Offset(size.width, midY),
+                        strokeWidth = 1f
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Text("手动调节", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(8.dp))
+            repeat(viewModel.eqBandCount) { band ->
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+                    val freq = viewModel.eqCenterFreq(band)
+                    Text(
+                        if (freq >= 1000) "${freq / 1000}K" else "${freq}Hz",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.width(40.dp)
+                    )
+                    Slider(
+                        value = viewModel.eqBandLevel(band).toFloat(),
+                        onValueChange = { viewModel.setEqBand(band, it.toInt()) },
+                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                        valueRange = viewModel.eqBandRange.first().toFloat()..viewModel.eqBandRange.last().toFloat(),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Text(
+                        "${viewModel.eqBandLevel(band)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.width(36.dp),
+                        textAlign = TextAlign.End
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            TextButton(
+                onClick = { viewModel.showEqualizer = false },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("完成") }
+            Spacer(Modifier.height(32.dp))
+        }
+    }
 }
 
 @Composable
