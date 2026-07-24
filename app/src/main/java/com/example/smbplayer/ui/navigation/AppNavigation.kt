@@ -143,11 +143,15 @@ fun SmbPlayerAppContent() {
             targetState = selectedTab,
             transitionSpec = {
                 if (targetState > initialState) {
-                    slideInHorizontally { it / 3 } + fadeIn(tween(200)) togetherWith
-                    slideOutHorizontally { -it / 3 } + fadeOut(tween(150))
+                    slideInHorizontally(tween(300, easing = FastOutSlowInEasing)) { it / 4 } +
+                    fadeIn(tween(250)) togetherWith
+                    slideOutHorizontally(tween(250, easing = FastOutSlowInEasing)) { -it / 4 } +
+                    fadeOut(tween(200))
                 } else {
-                    slideInHorizontally { -it / 3 } + fadeIn(tween(200)) togetherWith
-                    slideOutHorizontally { it / 3 } + fadeOut(tween(150))
+                    slideInHorizontally(tween(300, easing = FastOutSlowInEasing)) { -it / 4 } +
+                    fadeIn(tween(250)) togetherWith
+                    slideOutHorizontally(tween(250, easing = FastOutSlowInEasing)) { it / 4 } +
+                    fadeOut(tween(200))
                 }
             },
             label = "tabCrossfade"

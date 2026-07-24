@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
 import com.example.smbplayer.data.player.PlayMode
 import com.example.smbplayer.data.player.PlayerState
 import com.example.smbplayer.ui.common.formatTime
@@ -136,7 +137,14 @@ fun PlayerScreen(
 
             Spacer(Modifier.weight(0.5f))
 
-            // Cover art - circular for smooth rotation
+            // Cover art - circular for smooth rotation, with entrance animation
+            var coverVisible by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { coverVisible = true }
+
+            AnimatedVisibility(
+                visible = coverVisible,
+                enter = scaleIn(tween(500, easing = FastOutSlowInEasing)) + fadeIn(tween(400))
+            ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(260.dp)) {
                 // Color glow behind cover
                 if (coverBytes != null) {
@@ -175,10 +183,18 @@ fun PlayerScreen(
                     else Icon(Icons.Filled.MusicNote, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            } // AnimatedVisibility for cover
 
             Spacer(Modifier.height(24.dp))
 
-            // Title
+            // Title with entrance animation
+            var titleVisible by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { delay(200); titleVisible = true }
+
+            AnimatedVisibility(
+                visible = titleVisible,
+                enter = fadeIn(tween(400)) + slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it / 4 }
+            ) {
             AnimatedContent(targetState = track?.title ?: "", transitionSpec = {
                 fadeIn(tween(200)) togetherWith fadeOut(tween(150))
             }, label = "title") { title ->
@@ -190,6 +206,7 @@ fun PlayerScreen(
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center
                 )
+            }
             }
 
             // Hi-Res badge
