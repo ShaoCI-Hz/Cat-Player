@@ -1,9 +1,17 @@
 package com.example.smbplayer.ui.navigation
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -66,8 +74,14 @@ fun SmbPlayerAppContent() {
     if (showPlayerScreen && playerState !is PlayerState.Idle && playerState !is PlayerState.Error) {
         AnimatedVisibility(
             visible = true,
-            enter = slideInVertically(initialOffsetY = { it }),
-            exit = slideOutVertically(targetOffsetY = { it })
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(400, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(300)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(350, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(200))
         ) {
             PlayerScreen(
                 viewModel = playerViewModel,
@@ -120,7 +134,19 @@ fun SmbPlayerAppContent() {
         }
     ) { paddingValues ->
         val modifier = Modifier.padding(paddingValues)
-        Crossfade(targetState = selectedTab, label = "tabCrossfade") { tab ->
+        AnimatedContent(
+            targetState = selectedTab,
+            transitionSpec = {
+                if (targetState > initialState) {
+                    slideInHorizontally { it / 3 } + fadeIn(tween(200)) togetherWith
+                    slideOutHorizontally { -it / 3 } + fadeOut(tween(150))
+                } else {
+                    slideInHorizontally { -it / 3 } + fadeIn(tween(200)) togetherWith
+                    slideOutHorizontally { it / 3 } + fadeOut(tween(150))
+                }
+            },
+            label = "tabCrossfade"
+        ) { tab ->
             when (tab) {
                 0 -> LibraryScreen(libraryViewModel, connectViewModel, playerViewModel, favoritesViewModel, "songs", modifier)
                 1 -> {

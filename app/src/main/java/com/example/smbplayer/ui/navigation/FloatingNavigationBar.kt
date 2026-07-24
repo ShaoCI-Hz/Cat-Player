@@ -38,16 +38,16 @@ fun FloatingNavigationBar(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
-    val pillShape = RoundedCornerShape(40.dp)
+    val pillShape = RoundedCornerShape(32.dp)  // Slightly smaller radius
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .shadow(12.dp, pillShape)  // V12: Stronger shadow
+            .padding(horizontal = 20.dp, vertical = 6.dp)  // More horizontal padding
+            .shadow(12.dp, pillShape)
             .clip(pillShape)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))  // V12: Glassmorphism
-            .padding(horizontal = 6.dp, vertical = 6.dp)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f))
+            .padding(horizontal = 4.dp, vertical = 4.dp)  // Tighter internal padding
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),

@@ -135,16 +135,16 @@ fun PlayerScreen(
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(300.dp)) {
                 // Blurred color glow
                 if (coverBytes != null) {
-                    Box(Modifier.size(260.dp).clip(CircleShape).background(
-                        Brush.radialGradient(listOf(bgColor.copy(alpha = 0.5f), Color.Transparent))
+                    Box(Modifier.size(280.dp).clip(CircleShape).background(
+                        Brush.radialGradient(listOf(bgColor.copy(alpha = 0.6f), Color.Transparent))
                     ))
                 }
-                // Cover art with shadow
+                // Cover art - circular so rotation looks natural
                 Box(
-                    Modifier.size(280.dp)
+                    Modifier.size(260.dp)
                         .graphicsLayer {
                             shadowElevation = 24f
-                            shape = RoundedCornerShape(20.dp)
+                            shape = CircleShape
                             clip = true
                         }
                         .background(MaterialTheme.colorScheme.surfaceVariant)
@@ -177,7 +177,7 @@ fun PlayerScreen(
                         },
                     Alignment.Center
                 ) {
-                    if (coverBytes != null) AsyncImage(model = coverBytes, null, Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)), contentScale = ContentScale.Crop)
+                    if (coverBytes != null) AsyncImage(model = coverBytes, null, Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
                     else Icon(Icons.Filled.MusicNote, null, Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

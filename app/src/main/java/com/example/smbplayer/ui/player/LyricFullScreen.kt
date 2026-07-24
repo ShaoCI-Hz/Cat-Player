@@ -66,6 +66,12 @@ fun LyricFullScreen(
         ).map { it.copy(alpha = 0.85f) } + listOf(Color(0xFF0A0A0A).copy(alpha = 0.95f))
     }
 
+    // Auto-invert text color based on background brightness
+    val dominantColor = coverColors.firstOrNull() ?: Color(0xFF1A1C2E)
+    val brightness = (dominantColor.red * 0.299f + dominantColor.green * 0.587f + dominantColor.blue * 0.114f)
+    val textColor = if (brightness > 0.5f) Color.Black else Color.White
+    val dimTextColor = textColor.copy(alpha = 0.4f)
+
     // Lyrics state
     var lastIdx by remember { mutableIntStateOf(0) }
     val currentIndex = if (lastIdx in lyrics.indices && currentPositionMs >= lyrics[lastIdx].timestampMs) {
@@ -127,9 +133,9 @@ fun LyricFullScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Filled.KeyboardArrowDown, "关闭", tint = Color.White.copy(alpha = 0.7f))
+                Icon(Icons.Filled.KeyboardArrowDown, "关闭", tint = dimTextColor)
             }
-            Text("歌词", style = MaterialTheme.typography.titleSmall, color = Color.White.copy(alpha = 0.5f))
+            Text("歌词", style = MaterialTheme.typography.titleSmall, color = dimTextColor)
             Spacer(Modifier.size(48.dp))
         }
 
@@ -165,7 +171,7 @@ fun LyricFullScreen(
                     textAlign = TextAlign.Center,
                     fontSize = fontSize.sp,
                     fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                    color = Color.White.copy(alpha = alpha),
+                    color = textColor.copy(alpha = alpha),  // Auto-inverted based on background
                     lineHeight = (if (isCurrent) 34 else 24).sp,
                 )
             }
