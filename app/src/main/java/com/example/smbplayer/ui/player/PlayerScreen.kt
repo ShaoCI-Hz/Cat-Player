@@ -92,20 +92,19 @@ fun PlayerScreen(
         label = "coverScale"
     )
 
-    Scaffold(containerColor = MaterialTheme.colorScheme.background,
+    Scaffold(containerColor = Color.Transparent,
         topBar = {
             TopAppBar(title = {}, navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.Filled.KeyboardArrowDown, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onBackground) }
+                IconButton(onClick = onBack) { Icon(Icons.Filled.KeyboardArrowDown, null, Modifier.size(28.dp), tint = Color.White.copy(alpha = 0.8f)) }
             }, actions = {
                 val t = track
-                if (viewModel.lyrics.collectAsState().value.isNotEmpty()) IconButton(onClick = { showLyrics = true }) { Icon(Icons.Filled.LibraryMusic, "歌词", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
-                IconButton(onClick = { onOpenPlaylist() }) { Icon(Icons.AutoMirrored.Filled.QueueMusic, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
-                // #10: Scene mode button
-                IconButton(onClick = { showSceneMode = true }) { Icon(Icons.Filled.Tune, "场景模式", Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
+                if (viewModel.lyrics.collectAsState().value.isNotEmpty()) IconButton(onClick = { showLyrics = true }) { Icon(Icons.Filled.LibraryMusic, "歌词", Modifier.size(22.dp), tint = Color.White.copy(alpha = 0.8f)) }
+                IconButton(onClick = { onOpenPlaylist() }) { Icon(Icons.AutoMirrored.Filled.QueueMusic, null, Modifier.size(22.dp), tint = Color.White.copy(alpha = 0.8f)) }
+                IconButton(onClick = { showSceneMode = true }) { Icon(Icons.Filled.Tune, "场景模式", Modifier.size(22.dp), tint = Color.White.copy(alpha = 0.8f)) }
                 // Share button with menu
                 var showShareMenu by remember { mutableStateOf(false) }
                 Box {
-                    IconButton(onClick = { showShareMenu = true }) { Icon(Icons.Filled.Share, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onBackground) }
+                    IconButton(onClick = { showShareMenu = true }) { Icon(Icons.Filled.Share, null, Modifier.size(22.dp), tint = Color.White.copy(alpha = 0.8f)) }
                     DropdownMenu(expanded = showShareMenu, onDismissRequest = { showShareMenu = false }) {
                         DropdownMenuItem(text = { Text("分享文字") }, onClick = {
                             t?.let { ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "${it.title} - ${it.artist}") }, "Share")) }
@@ -123,7 +122,7 @@ fun PlayerScreen(
                         }
                     }
                 }
-            }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
+            }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent))
         }
     ) { padding ->
         Column(

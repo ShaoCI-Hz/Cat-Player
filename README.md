@@ -147,6 +147,13 @@ APK 输出: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## 更新日志
 
+### v3.10.4 (2026-07-24) — 播放页+歌词页修复
+- 播放页 TopAppBar 透明化，去除顶部白色大条
+- 播放页图标改为白色半透明，融入渐变背景
+- 歌词页关闭按钮增大到 48dp，图标增大到 32dp
+- 歌词页添加 BackHandler 支持系统返回键/手势
+- 歌词页顶部 padding 增大避免状态栏遮挡
+
 ### v3.10.3 (2026-07-24) — 代码质量优化
 - PlayerScreen modifier 链拆分，提高可读性
 - LibraryScreen 长行拆分

@@ -1,5 +1,6 @@
 package com.example.smbplayer.ui.player
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -37,6 +38,9 @@ fun LyricFullScreen(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Handle system back button/gesture
+    BackHandler(onBack = onDismiss)
+
     if (lyrics.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("暂无歌词", color = Color.White.copy(alpha = 0.6f))
@@ -127,14 +131,17 @@ fun LyricFullScreen(
                 )
         )
 
-        // Top bar
+        // Top bar - larger touch target for close button
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp).padding(top = 8.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp).padding(top = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onDismiss) {
-                Icon(Icons.Filled.KeyboardArrowDown, "关闭", tint = dimTextColor)
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(48.dp)  // Minimum touch target
+            ) {
+                Icon(Icons.Filled.KeyboardArrowDown, "关闭", tint = dimTextColor, modifier = Modifier.size(32.dp))
             }
             Text("歌词", style = MaterialTheme.typography.titleSmall, color = dimTextColor)
             Spacer(Modifier.size(48.dp))
