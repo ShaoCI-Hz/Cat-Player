@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -38,83 +40,91 @@ fun FloatingNavigationBar(
     modifier: Modifier = Modifier
 ) {
     val haptic = LocalHapticFeedback.current
-    val pillShape = RoundedCornerShape(32.dp)  // Slightly smaller radius
+    val barShape = RoundedCornerShape(28.dp)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp)  // More horizontal padding
-            .shadow(12.dp, pillShape)
-            .clip(pillShape)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f))
-            .padding(horizontal = 4.dp, vertical = 4.dp)  // Tighter internal padding
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+            .shadow(elevation = 16.dp, shape = barShape, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f))
+            .clip(barShape)
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             tabs.forEachIndexed { index, tab ->
                 val isSelected = index == selectedIndex
 
-                val bg by animateColorAsState(
-                    if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.surface,
-                    animationSpec = spring(dampingRatio = 0.65f, stiffness = 420f),
-                    label = "bg"
-                )
-
                 val iconScale by animateFloatAsState(
-                    if (isSelected) 1.1f else 1f,
-                    animationSpec = spring(dampingRatio = 0.4f, stiffness = 500f),
-                    label = "scale"
+                    if (isSelected) 1.15f else 1f,
+                    animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
+                    label = "iconScale"
                 )
 
-                val iconTint by animateColorAsState(
+                val iconColor by animateColorAsState(
                     if (isSelected) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    animationSpec = spring(dampingRatio = 0.65f, stiffness = 420f),
-                    label = "tint"
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
+                    label = "iconColor"
                 )
 
                 val textColor by animateColorAsState(
-                    if (isSelected) MaterialTheme.colorScheme.onBackground
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    animationSpec = spring(dampingRatio = 0.65f, stiffness = 420f),
-                    label = "text"
+                    if (isSelected) MaterialTheme.colorScheme.primary
+                    else Color.Transparent,
+                    animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
+                    label = "textColor"
                 )
 
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(pillShape)
-                        .background(bg)
+                        .clip(RoundedCornerShape(16.dp))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             role = Role.Tab,
-                            onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onTabSelected(index) }
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onTabSelected(index)
+                            }
                         )
-                        .padding(vertical = 10.dp),
+                        .padding(vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
+                    // Icon with scale animation
                     Icon(
                         imageVector = tab.icon,
                         contentDescription = tab.label,
                         modifier = Modifier
-                            .size(22.dp)
+                            .size(24.dp)
                             .scale(iconScale),
-                        tint = iconTint,
+                        tint = iconColor,
                     )
-                    Spacer(Modifier.height(3.dp))
+
+                    Spacer(Modifier.height(2.dp))
+
+                    // Label - only visible when selected
                     Text(
                         text = tab.label,
-                        fontSize = if (isSelected) 11.sp else 10.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 10.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         color = textColor,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
+                    )
+
+                    // Active indicator dot
+                    Spacer(Modifier.height(2.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(if (isSelected) 4.dp else 0.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
                     )
                 }
             }
