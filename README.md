@@ -147,6 +147,16 @@ APK 输出: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## 更新日志
 
+### v3.9.0 (2026-07-24) — 视觉质感升级
+- 全局色彩对比度提升：surfaceVariant 与背景色层次更分明
+- 圆角系统升级：small 8dp / medium 14dp / large 20dp
+- 字体排版优化：增大行高，labelSmall 最小 11sp
+- 播放器封面添加阴影和光晕效果
+- 播放按钮添加径向渐变和阴影
+- 控件层次感：prev/next 添加圆形背景，shuffle/repeat 添加状态背景
+- 底栏毛玻璃效果 (alpha=0.85)
+- 迷你播放条阴影增强到 8dp
+
 ### v3.8.1 (2026-07-23)
 - 修复元数据竞态：旧曲目元数据不再覆盖当前曲目
 - 修复 SMB 播放列表 fileSize=0 导致播放失败

@@ -19,11 +19,11 @@ import androidx.compose.ui.unit.sp
 val CatPlayerGreen = Color(0xFF1ED760)
 val CatPlayerBlack = Color(0xFF0A0A0A)
 val CatPlayerSurface = Color(0xFF121212)
-val CatPlayerCard = Color(0xFF181818)
-val CatPlayerElevated = Color(0xFF242424)
+val CatPlayerCard = Color(0xFF252525)       // V2: Increased contrast (was #181818)
+val CatPlayerElevated = Color(0xFF2A2A2A)   // V2: Better elevation distinction
 val CatPlayerWhite = Color(0xFFFFFFFF)
-val CatPlayerGray = Color(0xFFA0A0A0)
-val CatPlayerDimGray = Color(0xFF6A6A6A)
+val CatPlayerGray = Color(0xFFB3B3B3)       // V2: Brighter gray for better readability
+val CatPlayerDimGray = Color(0xFF8A8A8A)    // V2: Brighter dim gray
 val CatPlayerProgressTrack = Color(0xFF535353)
 val CatPlayerError = Color(0xFFF15E6C)
 
@@ -44,13 +44,13 @@ private val DarkScheme = darkColorScheme(
     onBackground = CatPlayerWhite,
     surface = CatPlayerSurface,
     onSurface = CatPlayerWhite,
-    surfaceVariant = CatPlayerCard,
+    surfaceVariant = CatPlayerCard,           // V2: Now #252525, clearly distinct from #121212
     onSurfaceVariant = CatPlayerGray,
     surfaceDim = Color(0xFF0A0A0A),
-    surfaceBright = Color(0xFF2A2A2A),
+    surfaceBright = Color(0xFF2E2E2E),        // V2: Brighter
     surfaceContainerLow = Color(0xFF0E0E0E),
     surfaceContainerHigh = Color(0xFF1E1E1E),
-    outline = Color(0xFF3A3A3A),
+    outline = Color(0xFF404040),              // V2: More visible outline
     outlineVariant = Color(0xFF2A2A2A),
     inverseSurface = CatPlayerWhite,
     inverseOnSurface = CatPlayerBlack,
@@ -91,31 +91,31 @@ private val LightScheme = lightColorScheme(
     scrim = Color(0xFF000000),
 )
 
-// ========== Shapes ==========
+// ========== Shapes (V3: Larger radii for modern look) ==========
 
 val AppShapes = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),
-    small = RoundedCornerShape(6.dp),
-    medium = RoundedCornerShape(10.dp),
-    large = RoundedCornerShape(12.dp),
-    extraLarge = RoundedCornerShape(20.dp),
+    extraSmall = RoundedCornerShape(6.dp),    // was 4dp
+    small = RoundedCornerShape(8.dp),         // was 6dp
+    medium = RoundedCornerShape(14.dp),       // was 10dp
+    large = RoundedCornerShape(20.dp),        // was 12dp
+    extraLarge = RoundedCornerShape(28.dp),   // was 20dp
 )
 
-// ========== Typography ==========
+// ========== Typography (V1: Better spacing and weights) ==========
 
 val AppTypography = Typography(
-    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 34.sp),
-    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 30.sp),
-    headlineSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 26.sp),
-    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 24.sp),
-    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
+    headlineLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 36.sp, letterSpacing = (-0.5).sp),
+    headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 32.sp, letterSpacing = (-0.3).sp),
+    headlineSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 28.sp, letterSpacing = (-0.2).sp),
+    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 18.sp, lineHeight = 26.sp),
+    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 24.sp),
     titleSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
     bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
     bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
-    bodySmall = TextStyle(fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 16.sp),
+    bodySmall = TextStyle(fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 18.sp),
     labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
-    labelMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 16.sp),
-    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 10.sp, lineHeight = 14.sp),
+    labelMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 12.sp, lineHeight = 18.sp),
+    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 16.sp),  // was 10sp, too small
 )
 
 enum class ThemeMode { Dark, Light, System }

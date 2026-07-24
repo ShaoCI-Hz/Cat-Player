@@ -44,9 +44,9 @@ fun FloatingNavigationBar(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .shadow(8.dp, pillShape)
+            .shadow(12.dp, pillShape)  // V12: Stronger shadow
             .clip(pillShape)
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))  // V12: Glassmorphism
             .padding(horizontal = 6.dp, vertical = 6.dp)
     ) {
         Row(

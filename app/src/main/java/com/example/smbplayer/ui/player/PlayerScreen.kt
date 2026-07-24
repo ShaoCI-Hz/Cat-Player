@@ -125,46 +125,61 @@ fun PlayerScreen(
             }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
         }
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).background(Brush.verticalGradient(listOf(bgColor.copy(alpha = 0.6f), Color(0xFF0A0A0A)))).padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Spacer(Modifier.height(12.dp))
-            // Cover art with gesture support + rotation animation (P1 + #3 enhanced)
+        Column(Modifier.fillMaxSize().padding(padding).background(Brush.verticalGradient(listOf(bgColor.copy(alpha = 0.7f), Color(0xFF0A0A0A)))).padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Spacer(Modifier.height(20.dp))
+            // V4: Cover art with shadow + color glow
             var volumeAdjust by remember { mutableFloatStateOf(0f) }
             val haptic = LocalHapticFeedback.current
-            Box(
-                Modifier.size(280.dp).clip(RoundedCornerShape(140.dp)).border(2.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(140.dp)).background(MaterialTheme.colorScheme.surfaceVariant)
-                    .rotate(if (isPlaying) coverRotation else 0f)
-                    .scale(coverScale)
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {},
-                            onDragCancel = {},
-                            onHorizontalDrag = { _, dragAmount ->
-                                // #3: Velocity-aware swipe with haptic feedback
-                                if (dragAmount > 30) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.prev()
-                                } else if (dragAmount < -30) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.next()
+
+            // Color glow behind cover
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(300.dp)) {
+                // Blurred color glow
+                if (coverBytes != null) {
+                    Box(Modifier.size(260.dp).clip(CircleShape).background(
+                        Brush.radialGradient(listOf(bgColor.copy(alpha = 0.5f), Color.Transparent))
+                    ))
+                }
+                // Cover art with shadow
+                Box(
+                    Modifier.size(280.dp)
+                        .graphicsLayer {
+                            shadowElevation = 24f
+                            shape = RoundedCornerShape(20.dp)
+                            clip = true
+                        }
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .rotate(if (isPlaying) coverRotation else 0f)
+                        .scale(coverScale)
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {},
+                                onDragCancel = {},
+                                onHorizontalDrag = { _, dragAmount ->
+                                    if (dragAmount > 30) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.prev()
+                                    } else if (dragAmount < -30) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        viewModel.next()
+                                    }
+                                }
+                            )
+                        }
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures { _, dragAmount ->
+                                volumeAdjust = (-dragAmount / 400f).coerceIn(-0.15f, 0.15f)
+                                val newVol = (viewModel.volume.value + volumeAdjust).coerceIn(0f, 1f)
+                                viewModel.setVolume(newVol)
+                                if (kotlin.math.abs(dragAmount) > 20) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 }
                             }
-                        )
-                    }
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures { _, dragAmount ->
-                            volumeAdjust = (-dragAmount / 400f).coerceIn(-0.15f, 0.15f)
-                            val newVol = (viewModel.volume.value + volumeAdjust).coerceIn(0f, 1f)
-                            viewModel.setVolume(newVol)
-                            // Haptic feedback on volume change
-                            if (kotlin.math.abs(dragAmount) > 20) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            }
-                        }
-                    },
-                Alignment.Center
-            ) {
-                if (coverBytes != null) AsyncImage(model = coverBytes, null, Modifier.fillMaxSize().clip(RoundedCornerShape(140.dp)), contentScale = ContentScale.Crop)
-                else Icon(Icons.Filled.MusicNote, null, Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        },
+                    Alignment.Center
+                ) {
+                    if (coverBytes != null) AsyncImage(model = coverBytes, null, Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)), contentScale = ContentScale.Crop)
+                    else Icon(Icons.Filled.MusicNote, null, Modifier.size(80.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             Spacer(Modifier.height(24.dp))
             // Title with Hi-Res badge
@@ -251,16 +266,52 @@ fun PlayerScreen(
                 )
             }
             Spacer(Modifier.height(16.dp))
+            // V5+V7: Control buttons with depth and hierarchy
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { viewModel.setPlayMode(if (playMode == PlayMode.Random) PlayMode.Sequential else PlayMode.Random) }) { Icon(Icons.Filled.Shuffle, null, Modifier.size(20.dp), tint = if (playMode == PlayMode.Random) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
-                IconButton(onClick = { viewModel.prev() }) { Icon(Icons.Filled.SkipPrevious, null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.onBackground) }
-                IconButton(onClick = { viewModel.togglePlay() }, Modifier.scale(playBtnScale).size(72.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary)) {
+                // Shuffle - smaller, subtle background when active
+                IconButton(
+                    onClick = { viewModel.setPlayMode(if (playMode == PlayMode.Random) PlayMode.Sequential else PlayMode.Random) },
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(
+                        if (playMode == PlayMode.Random) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent
+                    )
+                ) { Icon(Icons.Filled.Shuffle, null, Modifier.size(18.dp), tint = if (playMode == PlayMode.Random) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
+
+                // Previous - with circular background
+                IconButton(
+                    onClick = { viewModel.prev() },
+                    modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) { Icon(Icons.Filled.SkipPrevious, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onBackground) }
+
+                // V5: Play button with shadow and gradient
+                IconButton(
+                    onClick = { viewModel.togglePlay() },
+                    modifier = Modifier.scale(playBtnScale).size(72.dp)
+                        .graphicsLayer {
+                            shadowElevation = 12f
+                            shape = CircleShape
+                            clip = true
+                        }
+                        .background(Brush.radialGradient(listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        )))
+                ) {
                     Icon(if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(36.dp))
                 }
-                IconButton(onClick = { viewModel.next() }) { Icon(Icons.Filled.SkipNext, null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.onBackground) }
-                IconButton(onClick = { val modes = PlayMode.entries.filter { it != PlayMode.Random }; val i = modes.indexOf(playMode); viewModel.setPlayMode(if (i >= 0) modes[(i + 1) % modes.size] else PlayMode.Sequential) }) {
-                    Icon(if (playMode == PlayMode.Single) Icons.Filled.RepeatOne else Icons.Filled.Repeat, null, Modifier.size(20.dp), tint = if (playMode != PlayMode.Sequential) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+
+                // Next - with circular background
+                IconButton(
+                    onClick = { viewModel.next() },
+                    modifier = Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) { Icon(Icons.Filled.SkipNext, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onBackground) }
+
+                // Repeat - smaller, subtle background when active
+                IconButton(
+                    onClick = { val modes = PlayMode.entries.filter { it != PlayMode.Random }; val i = modes.indexOf(playMode); viewModel.setPlayMode(if (i >= 0) modes[(i + 1) % modes.size] else PlayMode.Sequential) },
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(
+                        if (playMode != PlayMode.Sequential) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent
+                    )
+                ) { Icon(if (playMode == PlayMode.Single) Icons.Filled.RepeatOne else Icons.Filled.Repeat, null, Modifier.size(18.dp), tint = if (playMode != PlayMode.Sequential) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             Spacer(Modifier.height(16.dp))
         }

@@ -47,11 +47,11 @@ fun PlayerBar(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { onOpenPlayer() },
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 4.dp,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),  // V13: Slight transparency
+        shadowElevation = 8.dp,  // V13: Stronger shadow (was 4dp)
     ) {
         Column {
-            // Progress line at top
+            // Progress line at top - gradient
             LinearProgressIndicator(
                 progress = { progress.coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth().height(2.dp),
@@ -62,7 +62,7 @@ fun PlayerBar(
                 Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Cover art with crossfade
+                // Cover art with crossfade - larger radius
                 AnimatedContent(
                     targetState = coverBytes,
                     transitionSpec = {
@@ -72,7 +72,7 @@ fun PlayerBar(
                     label = "cover"
                 ) { bytes ->
                     Box(
-                        Modifier.size(48.dp).clip(RoundedCornerShape(6.dp))
+                        Modifier.size(48.dp).clip(RoundedCornerShape(8.dp))  // V13: Larger radius
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
