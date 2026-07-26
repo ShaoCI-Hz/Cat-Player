@@ -2,6 +2,7 @@ package com.example.smbplayer.data.smb
 
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.smbj.SMBClient
+import com.hierynomus.smbj.SmbConfig as SmbjConfig
 import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.connection.Connection
 import com.hierynomus.smbj.session.Session
@@ -74,11 +75,14 @@ class SmbConnectionManager @Inject constructor() {
             _connectionState.value = ConnectionState.Connecting
             disconnect()
             withTimeout(15_000) {
-                val cli = SMBClient()
+                // Disable encryption to avoid SecretKey/BouncyCastle issues
+                val smbConfig = SmbjConfig.builder()
+                    .withEncryptData(false)
+                    .build()
+                val cli = SMBClient(smbConfig)
                 client = cli
-                val conn = cli.connect(config.host, config.port)
+                val conn = cli.connect(config.host)
                 connection = conn
-                // Support anonymous/guest access when username is empty
                 val authContext = if (config.username.isEmpty()) {
                     AuthenticationContext.anonymous()
                 } else {
@@ -88,27 +92,10 @@ class SmbConnectionManager @Inject constructor() {
                         config.domain.ifEmpty { null }
                     )
                 }
-                try {
-                    val sess = conn.authenticate(authContext)
-                    session = sess
-                    diskShare = sess.connectShare(config.shareName) as? DiskShare
-                        ?: throw IllegalStateException("共享 ${config.shareName} 不是磁盘共享类型")
-                } catch (e: Exception) {
-                    // If encryption fails, try without encryption
-                    val msg = e.message ?: ""
-                    if (msg.contains("SecretKey") || msg.contains("encrypt") || msg.contains("cipher")) {
-                        // Reconnect without encryption
-                        conn.close()
-                        val conn2 = cli.connect(config.host, config.port)
-                        connection = conn2
-                        val sess2 = conn2.authenticate(authContext)
-                        session = sess2
-                        diskShare = sess2.connectShare(config.shareName) as? DiskShare
-                            ?: throw IllegalStateException("共享 ${config.shareName} 不是磁盘共享类型")
-                    } else {
-                        throw e
-                    }
-                }
+                val sess = conn.authenticate(authContext)
+                session = sess
+                diskShare = sess.connectShare(config.shareName) as? DiskShare
+                    ?: throw IllegalStateException("共享 ${config.shareName} 不是磁盘共享类型")
             }
 
             connectionGeneration.incrementAndGet()
