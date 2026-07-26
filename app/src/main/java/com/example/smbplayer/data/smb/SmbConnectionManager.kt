@@ -78,11 +78,16 @@ class SmbConnectionManager @Inject constructor() {
                 client = cli
                 val conn = cli.connect(config.host)
                 connection = conn
-                val authContext = AuthenticationContext(
-                    config.username,
-                    config.password.toCharArray(),
-                    config.domain.ifEmpty { null }
-                )
+                // Support anonymous/guest access when username is empty
+                val authContext = if (config.username.isEmpty()) {
+                    AuthenticationContext.anonymous()
+                } else {
+                    AuthenticationContext(
+                        config.username,
+                        config.password.toCharArray(),
+                        config.domain.ifEmpty { null }
+                    )
+                }
                 val sess = conn.authenticate(authContext)
                 session = sess
                 diskShare = sess.connectShare(config.shareName) as? DiskShare

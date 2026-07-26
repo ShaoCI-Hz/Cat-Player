@@ -56,24 +56,57 @@ fun SMBConnectDialog(
 
             SmbField(
                 value = host, onValueChange = { viewModel.updateHost(it) },
-                label = "服务器地址", icon = Icons.Filled.Dns,
+                label = "服务器地址 (如 192.168.1.100)", icon = Icons.Filled.Dns,
                 enabled = connectionState != ConnectionState.Connecting
             )
             SmbField(
                 value = shareName, onValueChange = { viewModel.updateShareName(it) },
-                label = "共享名称", icon = Icons.Filled.Folder,
+                label = "共享名称 (如 Music)", icon = Icons.Filled.Folder,
                 enabled = connectionState != ConnectionState.Connecting
             )
-            SmbField(
-                value = username, onValueChange = { viewModel.updateUsername(it) },
-                label = "用户名", icon = Icons.Filled.Person,
-                enabled = connectionState != ConnectionState.Connecting
-            )
-            SmbField(
-                value = password, onValueChange = { viewModel.updatePassword(it) },
-                label = "密码", icon = Icons.Filled.Lock,
-                enabled = connectionState != ConnectionState.Connecting, isPassword = true
-            )
+
+            // Guest/Anonymous toggle
+            var isGuest by remember { mutableStateOf(username.isEmpty()) }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.PersonOutline, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(12.dp))
+                Text("匿名访问 (无需账号密码)", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                Switch(
+                    checked = isGuest,
+                    onCheckedChange = {
+                        isGuest = it
+                        if (it) { viewModel.updateUsername(""); viewModel.updatePassword("") }
+                    }
+                )
+            }
+
+            if (!isGuest) {
+                SmbField(
+                    value = username, onValueChange = { viewModel.updateUsername(it) },
+                    label = "用户名", icon = Icons.Filled.Person,
+                    enabled = connectionState != ConnectionState.Connecting
+                )
+                SmbField(
+                    value = password, onValueChange = { viewModel.updatePassword(it) },
+                    label = "密码", icon = Icons.Filled.Lock,
+                    enabled = connectionState != ConnectionState.Connecting, isPassword = true
+                )
+            } else {
+                Card(
+                    Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Text(
+                        "将以访客身份连接，无需输入用户名和密码",
+                        Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             val err = errorMessage
             if (err != null) {
