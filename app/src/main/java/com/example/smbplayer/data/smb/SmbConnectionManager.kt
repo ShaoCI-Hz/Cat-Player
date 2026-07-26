@@ -88,10 +88,27 @@ class SmbConnectionManager @Inject constructor() {
                         config.domain.ifEmpty { null }
                     )
                 }
-                val sess = conn.authenticate(authContext)
-                session = sess
-                diskShare = sess.connectShare(config.shareName) as? DiskShare
-                    ?: throw IllegalStateException("共享 ${config.shareName} 不是磁盘共享类型")
+                try {
+                    val sess = conn.authenticate(authContext)
+                    session = sess
+                    diskShare = sess.connectShare(config.shareName) as? DiskShare
+                        ?: throw IllegalStateException("共享 ${config.shareName} 不是磁盘共享类型")
+                } catch (e: Exception) {
+                    // If encryption fails, try without encryption
+                    val msg = e.message ?: ""
+                    if (msg.contains("SecretKey") || msg.contains("encrypt") || msg.contains("cipher")) {
+                        // Reconnect without encryption
+                        conn.close()
+                        val conn2 = cli.connect(config.host, config.port)
+                        connection = conn2
+                        val sess2 = conn2.authenticate(authContext)
+                        session = sess2
+                        diskShare = sess2.connectShare(config.shareName) as? DiskShare
+                            ?: throw IllegalStateException("共享 ${config.shareName} 不是磁盘共享类型")
+                    } else {
+                        throw e
+                    }
+                }
             }
 
             connectionGeneration.incrementAndGet()
