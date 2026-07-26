@@ -19,6 +19,7 @@ fun SMBConnectDialog(
     onDismiss: () -> Unit
 ) {
     val host by viewModel.host.collectAsState()
+    val port by viewModel.port.collectAsState()
     val shareName by viewModel.shareName.collectAsState()
     val username by viewModel.username.collectAsState()
     val password by viewModel.password.collectAsState()
@@ -57,6 +58,11 @@ fun SMBConnectDialog(
             SmbField(
                 value = host, onValueChange = { viewModel.updateHost(it) },
                 label = "服务器地址 (如 192.168.1.100)", icon = Icons.Filled.Dns,
+                enabled = connectionState != ConnectionState.Connecting
+            )
+            SmbField(
+                value = port, onValueChange = { viewModel.updatePort(it) },
+                label = "端口 (默认 445)", icon = Icons.Filled.Tag,
                 enabled = connectionState != ConnectionState.Connecting
             )
             SmbField(

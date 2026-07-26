@@ -27,6 +27,9 @@ class ConnectViewModel @Inject constructor(
     private val _host = MutableStateFlow("")
     val host: StateFlow<String> = _host.asStateFlow()
 
+    private val _port = MutableStateFlow("445")
+    val port: StateFlow<String> = _port.asStateFlow()
+
     private val _shareName = MutableStateFlow("")
     val shareName: StateFlow<String> = _shareName.asStateFlow()
 
@@ -62,6 +65,7 @@ class ConnectViewModel @Inject constructor(
     }
 
     fun updateHost(value: String) { _host.value = value }
+    fun updatePort(value: String) { _port.value = value }
     fun updateShareName(value: String) { _shareName.value = value }
     fun updateUsername(value: String) { _username.value = value }
     fun updatePassword(value: String) { _password.value = value }
@@ -79,6 +83,7 @@ class ConnectViewModel @Inject constructor(
         viewModelScope.launch {
             val config = SmbConfig(
                 host = hostValue,
+                port = _port.value.toIntOrNull() ?: 445,
                 shareName = shareValue,
                 username = _username.value.trim(),
                 password = _password.value

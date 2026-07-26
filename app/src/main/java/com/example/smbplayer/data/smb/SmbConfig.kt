@@ -2,6 +2,7 @@ package com.example.smbplayer.data.smb
 
 data class SmbConfig(
     val host: String,
+    val port: Int = 445,
     val shareName: String,
     val username: String,
     val password: String,

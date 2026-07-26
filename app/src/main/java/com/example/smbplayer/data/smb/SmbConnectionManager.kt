@@ -76,7 +76,7 @@ class SmbConnectionManager @Inject constructor() {
             withTimeout(15_000) {
                 val cli = SMBClient()
                 client = cli
-                val conn = cli.connect(config.host)
+                val conn = cli.connect(config.host, config.port)
                 connection = conn
                 // Support anonymous/guest access when username is empty
                 val authContext = if (config.username.isEmpty()) {
