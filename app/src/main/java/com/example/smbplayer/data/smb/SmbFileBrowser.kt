@@ -42,8 +42,23 @@ class SmbFileBrowser @Inject constructor(
     }
 
     fun getInputStream(path: String): InputStream =
-        connectionManager.openFileStream(path)
+        connectionManager.openFileStream(path).inputStream
 
-    fun getFileSize(path: String): Long =
-        connectionManager.getFileSize(path)
+    fun getFileSize(path: String): Long {
+        // Get file size by opening and checking
+        return try {
+            val share = connectionManager.activeShare ?: return 0L
+            val file = share.openFile(
+                path,
+                java.util.EnumSet.of(com.hierynomus.msdtyp.AccessMask.GENERIC_READ),
+                null,
+                java.util.EnumSet.of(com.hierynomus.mssmb2.SMB2ShareAccess.FILE_SHARE_READ),
+                com.hierynomus.mssmb2.SMB2CreateDisposition.FILE_OPEN,
+                null
+            )
+            val size = file.fileInformation.standardInformation.endOfFile
+            file.close()
+            size
+        } catch (_: Exception) { 0L }
+    }
 }

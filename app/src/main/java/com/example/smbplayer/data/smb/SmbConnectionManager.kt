@@ -1,48 +1,23 @@
 package com.example.smbplayer.data.smb
 
 import com.hierynomus.msdtyp.AccessMask
+import com.hierynomus.mssmb2.SMB2CreateDisposition
+import com.hierynomus.mssmb2.SMB2ShareAccess
 import com.hierynomus.smbj.SMBClient
-import com.hierynomus.smbj.SmbConfig as SmbjConfig
 import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.connection.Connection
 import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
-import com.hierynomus.smbj.share.File
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
 import java.io.InputStream
+import java.util.EnumSet
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
-
-/**
- * AutoCloseable wrapper that closes both the SMB File and its InputStream.
- * Prevents server-side file handle leaks.
- */
-class SmbFileStream(
-    private val file: File,
-    private val stream: InputStream
-) : InputStream() {
-    override fun read(): Int = stream.read()
-    override fun read(b: ByteArray): Int = stream.read(b)
-    override fun read(b: ByteArray, off: Int, len: Int): Int = stream.read(b, off, len)
-    override fun available(): Int = stream.available()
-    override fun close() {
-        try { stream.close() } catch (_: Exception) {}
-        try { file.close() } catch (_: Exception) {}
-    }
-}
 
 @Singleton
 class SmbConnectionManager @Inject constructor() {
@@ -50,18 +25,14 @@ class SmbConnectionManager @Inject constructor() {
     private val _connectionState = MutableStateFlow(ConnectionState.Disconnected)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
-    @Volatile private var client: SMBClient? = null
-    @Volatile private var connection: Connection? = null
-    @Volatile private var session: Session? = null
-    @Volatile private var diskShare: DiskShare? = null
-
-    // Generation counter: increments on each reconnect so active streams can detect stale connections
+    private var client: SMBClient? = null
+    private var connection: Connection? = null
+    private var session: Session? = null
+    private var diskShare: DiskShare? = null
     private val connectionGeneration = AtomicInteger(0)
 
     val activeShare: DiskShare?
         get() = if (_connectionState.value == ConnectionState.Connected) diskShare else null
-
-    fun currentGeneration(): Int = connectionGeneration.get()
 
     private var healthScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     @Volatile private var lastConfig: SmbConfig? = null
@@ -69,20 +40,23 @@ class SmbConnectionManager @Inject constructor() {
     private val connectMutex = kotlinx.coroutines.sync.Mutex()
 
     suspend fun connect(config: SmbConfig): Result<Unit> = withContext(Dispatchers.IO) {
-        // BUG-SMB-01 fix: Prevent concurrent connect/disconnect
         connectMutex.lock()
         try {
             _connectionState.value = ConnectionState.Connecting
             disconnect()
+
             withTimeout(15_000) {
-                // Disable encryption to avoid SecretKey/BouncyCastle issues
-                val smbConfig = SmbjConfig.builder()
+                // Create SMB client with encryption disabled
+                val smbConfig = com.hierynomus.smbj.SmbConfig.builder()
                     .withEncryptData(false)
                     .build()
                 val cli = SMBClient(smbConfig)
                 client = cli
+
                 val conn = cli.connect(config.host)
                 connection = conn
+
+                // Authentication - anonymous or credentials
                 val authContext = if (config.username.isEmpty()) {
                     AuthenticationContext.anonymous()
                 } else {
@@ -92,6 +66,7 @@ class SmbConnectionManager @Inject constructor() {
                         config.domain.ifEmpty { null }
                     )
                 }
+
                 val sess = conn.authenticate(authContext)
                 session = sess
                 diskShare = sess.connectShare(config.shareName) as? DiskShare
@@ -114,12 +89,12 @@ class SmbConnectionManager @Inject constructor() {
     }
 
     suspend fun disconnect(setState: Boolean = true) = withContext(Dispatchers.IO) {
-        connectionGeneration.incrementAndGet() // invalidate any active streams
+        connectionGeneration.incrementAndGet()
+        stopHealthCheck()
         try { diskShare?.close() } catch (_: Exception) {}
         try { session?.close() } catch (_: Exception) {}
         try { connection?.close() } catch (_: Exception) {}
         try { client?.close() } catch (_: Exception) {}
-
         diskShare = null
         session = null
         connection = null
@@ -127,28 +102,24 @@ class SmbConnectionManager @Inject constructor() {
         if (setState) _connectionState.value = ConnectionState.Disconnected
     }
 
-    /**
-     * Opens an SMB file stream wrapped in SmbFileStream (AutoCloseable).
-     * The wrapper ensures both the File handle and InputStream are closed together.
-     */
     fun openFileStream(path: String): SmbFileStream {
         val share = diskShare ?: throw SmbNotConnectedException()
         val file = share.openFile(
             path,
-            setOf(AccessMask.GENERIC_READ),
-            null, null, null, null
+            EnumSet.of(AccessMask.GENERIC_READ),
+            null,
+            EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
+            SMB2CreateDisposition.FILE_OPEN,
+            null
         )
         return SmbFileStream(file, file.inputStream)
     }
 
-    fun getFileSize(path: String): Long {
-        val share = diskShare ?: throw SmbNotConnectedException()
-        val info = share.getFileInformation(path)
-        return info.standardInformation.endOfFile
-    }
+    fun currentGeneration(): Int = connectionGeneration.get()
 
     private fun startHealthCheck() {
-        if (healthCheckRunning.getAndSet(true)) return
+        if (healthCheckRunning.get()) return
+        healthCheckRunning.set(true)
         if (healthScope.coroutineContext[Job]?.isActive != true) {
             healthScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         }
@@ -159,22 +130,26 @@ class SmbConnectionManager @Inject constructor() {
                     val alive = diskShare?.folderExists(".") ?: false
                     if (!alive) {
                         _connectionState.value = ConnectionState.Error
-                        // Exponential-ish backoff: wait extra before reconnecting
                         delay(10_000)
                         lastConfig?.let { connect(it) }
                     }
-                } catch (_: Exception) {
-                    _connectionState.value = ConnectionState.Error
-                    delay(10_000)
-                    lastConfig?.let { connect(it) }
-                }
+                } catch (_: Exception) {}
             }
         }
     }
 
-    fun stopHealthCheck() {
+    private fun stopHealthCheck() {
         healthCheckRunning.set(false)
         healthScope.cancel()
-        lastConfig = null
+    }
+}
+
+data class SmbFileStream(
+    private val file: com.hierynomus.smbj.share.File,
+    val inputStream: InputStream
+) : AutoCloseable {
+    override fun close() {
+        try { inputStream.close() } catch (_: Exception) {}
+        try { file.close() } catch (_: Exception) {}
     }
 }
