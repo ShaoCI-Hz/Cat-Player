@@ -141,15 +141,48 @@ fun PlayerScreen(
             var coverVisible by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) { coverVisible = true }
 
+            // Pulsing glow animation - breathes with music
+            val pulseAlpha by infiniteTransition.animateFloat(
+                initialValue = 0.3f,
+                targetValue = 0.7f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(2000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "pulseAlpha"
+            )
+            val pulseScale by infiniteTransition.animateFloat(
+                initialValue = 0.95f,
+                targetValue = 1.05f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(2000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "pulseScale"
+            )
+
             AnimatedVisibility(
                 visible = coverVisible,
                 enter = scaleIn(tween(500, easing = FastOutSlowInEasing)) + fadeIn(tween(400))
             ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(260.dp)) {
-                // Color glow behind cover
-                if (coverBytes != null) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(280.dp)) {
+                // Pulsing color glow - breathes with music
+                if (coverBytes != null && isPlaying) {
+                    Box(
+                        Modifier.size(260.dp)
+                            .scale(pulseScale)
+                            .clip(CircleShape)
+                            .background(Brush.radialGradient(listOf(
+                                bgColor.copy(alpha = pulseAlpha * 0.5f),
+                                bgColor.copy(alpha = pulseAlpha * 0.2f),
+                                Color.Transparent
+                            )))
+                    )
+                }
+                // Static glow when paused
+                if (coverBytes != null && !isPlaying) {
                     Box(Modifier.size(240.dp).clip(CircleShape).background(
-                        Brush.radialGradient(listOf(bgColor.copy(alpha = 0.6f), Color.Transparent))
+                        Brush.radialGradient(listOf(bgColor.copy(alpha = 0.4f), Color.Transparent))
                     ))
                 }
                 // Circular cover - rotation looks natural
@@ -254,15 +287,15 @@ fun PlayerScreen(
 
             // Main controls
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                // Previous
+                // Previous - with haptic feedback
                 IconButton(
-                    onClick = { viewModel.prev() },
+                    onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); viewModel.prev() },
                     modifier = Modifier.size(56.dp)
                 ) { Icon(Icons.Filled.SkipPrevious, null, Modifier.size(32.dp), tint = Color.White) }
 
-                // Play/Pause
+                // Play/Pause with elastic animation
                 IconButton(
-                    onClick = { viewModel.togglePlay() },
+                    onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); viewModel.togglePlay() },
                     modifier = Modifier.scale(playBtnScale).size(72.dp)
                         .graphicsLayer { shadowElevation = 16f; shape = CircleShape; clip = true }
                         .background(Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))))
@@ -270,9 +303,9 @@ fun PlayerScreen(
                     Icon(if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(36.dp))
                 }
 
-                // Next
+                // Next - with haptic feedback
                 IconButton(
-                    onClick = { viewModel.next() },
+                    onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); viewModel.next() },
                     modifier = Modifier.size(56.dp)
                 ) { Icon(Icons.Filled.SkipNext, null, Modifier.size(32.dp), tint = Color.White) }
             }
