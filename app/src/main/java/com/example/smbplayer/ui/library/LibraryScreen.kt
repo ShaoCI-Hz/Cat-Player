@@ -17,6 +17,7 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
@@ -376,11 +377,19 @@ private fun SongList(
             }
         }
 
-        // === 歌曲列表 ===
+        // === 歌曲列表 with entrance animation ===
         items(sortedTracks, key = { it.id }) { track ->
             val isCurrent = currentPlayingTrack?.localUri == track.uri.toString()
             var showMenu by remember { mutableStateOf(false) }
-            // PERF-LS-05 fix: Remove per-item animation, use static highlight instead
+
+            // Entrance animation for each item
+            var itemVisible by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { itemVisible = true }
+
+            AnimatedVisibility(
+                visible = itemVisible,
+                enter = fadeIn(tween(300)) + slideInVertically(tween(250)) { it / 6 }
+            ) {
             Row(Modifier.fillMaxWidth().animateItem().combinedClickable(onClick = {
                 playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString()))
             }, onLongClick = { showMenu = true }).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -400,6 +409,7 @@ private fun SongList(
                 }
                 Text(fmtDur(track.durationMs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            } // AnimatedVisibility
             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                 DropdownMenuItem(text = { Text("播放") }, onClick = { playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString())); showMenu = false })
                 DropdownMenuItem(text = { Text("添加到队列") }, onClick = {
