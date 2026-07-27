@@ -192,10 +192,12 @@ fun PlayerScreen(
                             shadowElevation = 20f
                             shape = CircleShape
                             clip = true
+                            // O8: GPU rotation - no recomposition
+                            rotationZ = if (isPlaying) coverRotation else 0f
+                            scaleX = coverScale
+                            scaleY = coverScale
                         }
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .rotate(if (isPlaying) coverRotation else 0f)
-                        .scale(coverScale)
                         .pointerInput(Unit) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()

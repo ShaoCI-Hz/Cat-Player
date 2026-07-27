@@ -147,6 +147,12 @@ APK 输出: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## 更新日志
 
+### v3.21.0 (2026-07-24) — 120fps 性能优化
+- 移除歌曲列表每项动画，改为静态样式
+- 封面旋转改用 graphicsLayer (GPU处理，不触发重组)
+- 列表添加 contentType 优化回收
+- 目标: 大列表滚动 120fps
+
 ### v3.19.0 (2026-07-24) — SMB 模块重写
 - 完全重写 SMB 模块，使用 jcifs-ng 替代 smbj
 - 彻底解决 SecretKey 加密库崩溃问题

@@ -377,26 +377,27 @@ private fun SongList(
             }
         }
 
-        // === 歌曲列表 with entrance animation ===
-        items(sortedTracks, key = { it.id }) { track ->
+        // === 歌曲列表 (120fps optimized - no per-item animation) ===
+        items(sortedTracks, key = { it.id }, contentType = { "song" }) { track ->
             val isCurrent = currentPlayingTrack?.localUri == track.uri.toString()
             var showMenu by remember { mutableStateOf(false) }
 
-            // Entrance animation for each item
-            var itemVisible by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) { itemVisible = true }
-
-            AnimatedVisibility(
-                visible = itemVisible,
-                enter = fadeIn(tween(300)) + slideInVertically(tween(250)) { it / 6 }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent)
+                    .combinedClickable(
+                        onClick = { playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString())) },
+                        onLongClick = { showMenu = true }
+                    )
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-            Row(Modifier.fillMaxWidth().animateItem().combinedClickable(onClick = {
-                playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString()))
-            }, onLongClick = { showMenu = true }).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                AnimatedVisibility(visible = isCurrent, enter = fadeIn() + expandHorizontally(), exit = fadeOut() + shrinkHorizontally()) {
+                // Static indicator - no animation for 120fps
+                if (isCurrent) {
                     Box(Modifier.width(3.dp).height(36.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)))
+                    Spacer(Modifier.width(8.dp))
                 }
-                if (isCurrent) { Spacer(Modifier.width(8.dp)) }
                 Box(Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
                     val artUri = remember(track.id) { track.albumArtUri() }
                     if (artUri != null) AsyncImage(model = artUri, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -409,7 +410,6 @@ private fun SongList(
                 }
                 Text(fmtDur(track.durationMs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            } // AnimatedVisibility
             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                 DropdownMenuItem(text = { Text("播放") }, onClick = { playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString())); showMenu = false })
                 DropdownMenuItem(text = { Text("添加到队列") }, onClick = {
