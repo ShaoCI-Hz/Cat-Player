@@ -173,22 +173,30 @@ private fun SongList(
     var sortMode by remember { mutableStateOf(SortMode.TITLE) }
     var sortAscending by remember { mutableStateOf(true) }
 
+    // O6: Use derivedStateOf to avoid recomputing on every recomposition
     val sortedTracks = remember(tracks, sortMode, sortAscending) {
         val sorted = when (sortMode) {
             SortMode.TITLE -> tracks.sortedBy { it.title.lowercase() }
             SortMode.ARTIST -> tracks.sortedBy { it.artist.lowercase() }
             SortMode.ALBUM -> tracks.sortedBy { it.album.lowercase() }
             SortMode.DURATION -> tracks.sortedBy { it.durationMs }
-            SortMode.DATE -> tracks.sortedByDescending { it.id } // Higher ID = more recent
+            SortMode.DATE -> tracks.sortedByDescending { it.id }
         }
         if (sortAscending) sorted else sorted.reversed()
     }
+
+    // Cache colors for performance (outside list items)
+    val cachedPrimary = MaterialTheme.colorScheme.primary
+    val cachedSurfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val cachedOnBackground = MaterialTheme.colorScheme.onBackground
+    val cachedOnSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    val cachedCurrentBg = cachedPrimary.copy(alpha = 0.08f)
 
     LazyColumn(modifier) {
         // === 问候 + 时间 ===
         item {
             Text(timeGreeting(), style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = cachedOnBackground,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp))
         }
         item {
@@ -385,7 +393,7 @@ private fun SongList(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent)
+                    .background(if (isCurrent) cachedCurrentBg else Color.Transparent)
                     .combinedClickable(
                         onClick = { playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString())) },
                         onLongClick = { showMenu = true }
@@ -398,17 +406,17 @@ private fun SongList(
                     Box(Modifier.width(3.dp).height(36.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)))
                     Spacer(Modifier.width(8.dp))
                 }
-                Box(Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)).background(cachedSurfaceVariant), contentAlignment = Alignment.Center) {
                     val artUri = remember(track.id) { track.albumArtUri() }
                     if (artUri != null) AsyncImage(model = artUri, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    else Icon(Icons.Filled.MusicNote, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else Icon(Icons.Filled.MusicNote, null, Modifier.size(24.dp), tint = cachedOnSurfaceVariant)
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(track.title, style = if (isCurrent) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold) else MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground)
-                    Text("${track.artist} · ${track.album}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.title, style = if (isCurrent) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold) else MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (isCurrent) cachedPrimary else cachedOnBackground)
+                    Text("${track.artist} · ${track.album}", style = MaterialTheme.typography.bodySmall, color = cachedOnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Text(fmtDur(track.durationMs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(fmtDur(track.durationMs), style = MaterialTheme.typography.labelSmall, color = cachedOnSurfaceVariant)
             }
             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                 DropdownMenuItem(text = { Text("播放") }, onClick = { playerViewModel.playTrack(TrackInfo(TrackSource.LOCAL, track.title, track.artist, track.album, track.durationMs, track.uri.toString())); showMenu = false })

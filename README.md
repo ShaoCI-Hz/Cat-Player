@@ -147,6 +147,12 @@ APK 输出: `app/build/outputs/apk/debug/app-debug.apk`
 
 ## 更新日志
 
+### v3.22.0 (2026-07-24) — 深度性能优化
+- 颜色缓存：MaterialTheme 读取移到列表外部
+- 列表项使用缓存颜色，减少重组
+- derivedStateOf 优化排序计算
+- LazyList prefetch 优化
+
 ### v3.21.0 (2026-07-24) — 120fps 性能优化
 - 移除歌曲列表每项动画，改为静态样式
 - 封面旋转改用 graphicsLayer (GPU处理，不触发重组)
