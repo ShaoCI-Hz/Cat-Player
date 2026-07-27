@@ -63,14 +63,10 @@ fun LibraryScreen(
     playerViewModel: PlayerViewModel, favoritesViewModel: FavoritesViewModel,
     showTab: String = "songs", modifier: Modifier = Modifier
 ) {
+    // Only collect essential state at top level
     val localTracks by viewModel.localTracks.collectAsState()
-    val albums by viewModel.albums.collectAsState()
-    val smbEntries by viewModel.smbEntries.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val breadcrumbs by viewModel.breadcrumbs.collectAsState()
     val isSMBConnected by connectViewModel.isConnected.collectAsState()
-    // PERF-LS-02 fix: Use collectAsState for reactive updates
-    val currentPlayingTrack by playerViewModel.currentTrack.collectAsState()
     val context = LocalContext.current
     var hasPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED)
@@ -83,9 +79,6 @@ fun LibraryScreen(
     var browseTab by remember { mutableIntStateOf(0) }
     var selectedAlbum by remember { mutableStateOf<AlbumEntry?>(null) }
     val filteredTracks = remember(localTracks, searchQuery) { localTracks.filter { searchQuery.isEmpty() || it.title.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true) } }
-    val filteredAlbums = remember(albums, searchQuery) { albums.filter { searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true) } }
-    val filteredSmb = remember(smbEntries, searchQuery) { smbEntries.filter { searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true) } }
-    val playHistory by playerViewModel.playHistory.collectAsState()
 
     Column(modifier) {
         OutlinedTextField(
@@ -102,10 +95,10 @@ fun LibraryScreen(
             trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Filled.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) } }
         )
         when (showTab) {
-            "songs" -> SongList(filteredTracks, isLoading, hasPermission, permLauncher, viewModel, playerViewModel, playHistory, Modifier.weight(1f), currentPlayingTrack)
-            "albums" -> if (selectedAlbum != null) AlbumDetailScreen(selectedAlbum!!, playerViewModel, onBack = { selectedAlbum = null }, Modifier.weight(1f)) else AlbumGrid(filteredAlbums, isLoading, playerViewModel, Modifier.weight(1f), { selectedAlbum = it })
-            "smb" -> SmbBrowser(filteredSmb, breadcrumbs, isSMBConnected, isLoading, viewModel, playerViewModel, Modifier.weight(1f))
-            "folders" -> FolderBrowser(filteredTracks, isLoading, hasPermission, playerViewModel, Modifier.weight(1f), currentPlayingTrack)
+            "songs" -> SongList(filteredTracks, isLoading, hasPermission, permLauncher, viewModel, playerViewModel, Modifier.weight(1f))
+            "albums" -> AlbumGridTab(viewModel, playerViewModel, Modifier.weight(1f), searchQuery) { selectedAlbum = it }
+            "smb" -> SmbBrowserTab(viewModel, connectViewModel, playerViewModel, Modifier.weight(1f), searchQuery)
+            "folders" -> FolderBrowser(filteredTracks, isLoading, hasPermission, playerViewModel, Modifier.weight(1f))
         }
     }
 }
@@ -119,6 +112,38 @@ private fun timeGreeting(): String = when (java.util.Calendar.getInstance().get(
 private fun fmtDur(ms: Long) = if (ms <= 0) "" else { val s = ms / 1000; "${s / 60}:${(s % 60).toString().padStart(2, '0')}" }
 private fun fmtSize(b: Long) = when { b < 1024 -> "${b} B"; b < 1048576 -> "${b / 1024} KB"; else -> "%.1f MB".format(b / 1048576.0) }
 
+// Wrapper composables that collect state internally to avoid parent recomposition
+
+@Composable
+private fun AlbumGridTab(
+    viewModel: LibraryViewModel, playerViewModel: PlayerViewModel,
+    modifier: Modifier, searchQuery: String, onAlbumClick: (AlbumEntry) -> Unit
+) {
+    val albums by viewModel.albums.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val filtered = remember(albums, searchQuery) { albums.filter { searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true) } }
+    if (filtered.isNotEmpty()) {
+        AlbumGrid(filtered, isLoading, playerViewModel, modifier, onAlbumClick)
+    } else if (isLoading) {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+    } else {
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("没有专辑", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+@Composable
+private fun SmbBrowserTab(
+    viewModel: LibraryViewModel, connectViewModel: ConnectViewModel,
+    playerViewModel: PlayerViewModel, modifier: Modifier, searchQuery: String
+) {
+    val smbEntries by viewModel.smbEntries.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val isSMBConnected by connectViewModel.isConnected.collectAsState()
+    val breadcrumbs by viewModel.breadcrumbs.collectAsState()
+    val filtered = remember(smbEntries, searchQuery) { smbEntries.filter { searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true) } }
+    SmbBrowser(filtered, breadcrumbs, isSMBConnected, isLoading, viewModel, playerViewModel, modifier)
+}
+
 enum class SortMode(val label: String) {
     TITLE("按标题"), ARTIST("按歌手"), ALBUM("按专辑"), DURATION("按时长"), DATE("按添加时间")
 }
@@ -129,9 +154,11 @@ private fun SongList(
     tracks: List<LocalTrack>, isLoading: Boolean, hasPermission: Boolean,
     permLauncher: androidx.activity.result.ActivityResultLauncher<String>,
     viewModel: LibraryViewModel, playerViewModel: PlayerViewModel,
-    history: List<TrackInfo>, modifier: Modifier,
-    currentPlayingTrack: TrackInfo? = null
+    modifier: Modifier
 ) {
+    // Collect inside this composable to avoid parent recomposition
+    val currentPlayingTrack by playerViewModel.currentTrack.collectAsState()
+    val playHistory by playerViewModel.playHistory.collectAsState()
     // P6: Shimmer skeleton loading
     if (isLoading) {
         LazyColumn(modifier) {
@@ -263,12 +290,12 @@ private fun SongList(
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 10.dp))
         }
-        if (history.isNotEmpty()) {
+        if (playHistory.isNotEmpty()) {
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(history.take(10), key = { it.smbPath + (it.localUri ?: "") }) { t ->
+                    items(playHistory.take(10), key = { it.smbPath + (it.localUri ?: "") }) { t ->
                         Card(Modifier.width(140.dp).clickable {
-                            playerViewModel.playTrack(t, history.toList(), history.indexOf(t).coerceAtLeast(0))
+                            playerViewModel.playTrack(t, playHistory.toList(), playHistory.indexOf(t).coerceAtLeast(0))
                         }, shape = RoundedCornerShape(10.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                             Column(Modifier.padding(10.dp)) {
