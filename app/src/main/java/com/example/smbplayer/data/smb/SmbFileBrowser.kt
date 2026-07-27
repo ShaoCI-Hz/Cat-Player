@@ -1,6 +1,6 @@
 package com.example.smbplayer.data.smb
 
-import com.hierynomus.msfscc.FileAttributes
+import jcifs.smb.SmbFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.InputStream
@@ -11,29 +11,31 @@ import javax.inject.Singleton
 class SmbFileBrowser @Inject constructor(
     private val connectionManager: SmbConnectionManager
 ) {
-    private val audioExtensions = setOf("mp3", "flac", "ogg", "wav", "aac", "wma", "opus", "m4a", "ape", "wv")
+    private val audioExtensions = setOf(
+        "mp3", "flac", "ogg", "wav", "aac", "wma", "opus", "m4a", "ape", "wv"
+    )
 
-    suspend fun listFiles(path: String): List<SmbFileEntry> = withContext(Dispatchers.IO) {
-        val share = connectionManager.activeShare
-            ?: throw SmbNotConnectedException()
+    suspend fun listDirectory(path: String): List<SmbFileEntry> = withContext(Dispatchers.IO) {
+        try {
+            val ctx = connectionManager.run {
+                // Get the SMB context from connection manager
+                val field = SmbConnectionManager::class.java.getDeclaredField("smbContext")
+                field.isAccessible = true
+                field.get(this) as? jcifs.CIFSContext
+            } ?: return@withContext emptyList()
 
-        val normalizedPath = path.trimStart('/').let { if (it.isEmpty()) "." else it }
-        val entries = share.list(normalizedPath)
-
-        entries
-            .filter { it.fileName != "." && it.fileName != ".." }
-            .map { info ->
-                val isDir = (info.fileAttributes and com.hierynomus.msfscc.FileAttributes.FILE_ATTRIBUTE_DIRECTORY.value) != 0L
+            val smbFile = SmbFile(path, ctx)
+            smbFile.listFiles().map { file ->
                 SmbFileEntry(
-                    name = info.fileName,
-                    path = if (path == "." || path == "/" || path.isEmpty()) info.fileName
-                           else "$path/${info.fileName}".trimStart('/'),
-                    isDirectory = isDir,
-                    size = if (isDir) 0 else info.endOfFile,
-                    lastModified = info.lastWriteTime.toEpochMillis()
+                    name = file.name,
+                    path = file.path,
+                    isDirectory = file.isDirectory,
+                    size = if (file.isFile) file.length() else 0L
                 )
-            }
-            .sortedWith(compareByDescending<SmbFileEntry> { it.isDirectory }.thenBy { it.name.lowercase() })
+            }.sortedWith(compareBy<SmbFileEntry> { !it.isDirectory }.thenBy { it.name.lowercase() })
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     fun isAudioFile(name: String): Boolean {
@@ -41,24 +43,26 @@ class SmbFileBrowser @Inject constructor(
         return ext.lowercase() in audioExtensions
     }
 
-    fun getInputStream(path: String): InputStream =
-        connectionManager.openFileStream(path).inputStream
+    fun getInputStream(path: String): InputStream {
+        val ctx = connectionManager.run {
+            val field = SmbConnectionManager::class.java.getDeclaredField("smbContext")
+            field.isAccessible = true
+            field.get(this) as? jcifs.CIFSContext
+        } ?: throw SmbNotConnectedException()
+
+        val smbFile = SmbFile(path, ctx)
+        return smbFile.inputStream
+    }
 
     fun getFileSize(path: String): Long {
-        // Get file size by opening and checking
+        val ctx = connectionManager.run {
+            val field = SmbConnectionManager::class.java.getDeclaredField("smbContext")
+            field.isAccessible = true
+            field.get(this) as? jcifs.CIFSContext
+        } ?: return 0L
+
         return try {
-            val share = connectionManager.activeShare ?: return 0L
-            val file = share.openFile(
-                path,
-                java.util.EnumSet.of(com.hierynomus.msdtyp.AccessMask.GENERIC_READ),
-                null,
-                java.util.EnumSet.of(com.hierynomus.mssmb2.SMB2ShareAccess.FILE_SHARE_READ),
-                com.hierynomus.mssmb2.SMB2CreateDisposition.FILE_OPEN,
-                null
-            )
-            val size = file.fileInformation.standardInformation.endOfFile
-            file.close()
-            size
+            SmbFile(path, ctx).length()
         } catch (_: Exception) { 0L }
     }
 }

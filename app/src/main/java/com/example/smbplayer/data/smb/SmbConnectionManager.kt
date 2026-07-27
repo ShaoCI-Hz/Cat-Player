@@ -1,19 +1,18 @@
 package com.example.smbplayer.data.smb
 
-import com.hierynomus.msdtyp.AccessMask
-import com.hierynomus.mssmb2.SMB2CreateDisposition
-import com.hierynomus.mssmb2.SMB2ShareAccess
-import com.hierynomus.smbj.SMBClient
-import com.hierynomus.smbj.auth.AuthenticationContext
-import com.hierynomus.smbj.connection.Connection
-import com.hierynomus.smbj.session.Session
-import com.hierynomus.smbj.share.DiskShare
+import jcifs.CIFSContext
+import jcifs.config.PropertyConfiguration
+import jcifs.context.BaseContext
+import jcifs.context.SingletonContext
+import jcifs.smb.NtlmPasswordAuthenticator
+import jcifs.smb.SmbFile
+import jcifs.smb.SmbFileInputStream
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.InputStream
-import java.util.EnumSet
+import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
@@ -25,19 +24,17 @@ class SmbConnectionManager @Inject constructor() {
     private val _connectionState = MutableStateFlow(ConnectionState.Disconnected)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
-    private var client: SMBClient? = null
-    private var connection: Connection? = null
-    private var session: Session? = null
-    private var diskShare: DiskShare? = null
+    private var smbContext: CIFSContext? = null
+    private var currentShare: String = ""
     private val connectionGeneration = AtomicInteger(0)
-
-    val activeShare: DiskShare?
-        get() = if (_connectionState.value == ConnectionState.Connected) diskShare else null
 
     private var healthScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     @Volatile private var lastConfig: SmbConfig? = null
     private val healthCheckRunning = AtomicBoolean(false)
     private val connectMutex = kotlinx.coroutines.sync.Mutex()
+
+    private val _isConnected = MutableStateFlow(false)
+    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     suspend fun connect(config: SmbConfig): Result<Unit> = withContext(Dispatchers.IO) {
         connectMutex.lock()
@@ -46,42 +43,47 @@ class SmbConnectionManager @Inject constructor() {
             disconnect()
 
             withTimeout(15_000) {
-                // Create SMB client with encryption disabled
-                val smbConfig = com.hierynomus.smbj.SmbConfig.builder()
-                    .withEncryptData(false)
-                    .build()
-                val cli = SMBClient(smbConfig)
-                client = cli
-
-                val conn = cli.connect(config.host)
-                connection = conn
-
-                // Authentication - anonymous or credentials
-                val authContext = if (config.username.isEmpty()) {
-                    AuthenticationContext.anonymous()
-                } else {
-                    AuthenticationContext(
-                        config.username,
-                        config.password.toCharArray(),
-                        config.domain.ifEmpty { null }
-                    )
+                // Configure jcifs-ng
+                val props = Properties().apply {
+                    put("jcifs.smb.client.minVersion", "SMB202")
+                    put("jcifs.smb.client.maxVersion", "SMB311")
+                    put("jcifs.smb.client.responseTimeout", "10000")
+                    put("jcifs.smb.client.soTimeout", "10000")
                 }
 
-                val sess = conn.authenticate(authContext)
-                session = sess
-                diskShare = sess.connectShare(config.shareName) as? DiskShare
-                    ?: throw IllegalStateException("共享 ${config.shareName} 不是磁盘共享类型")
-            }
+                val baseContext = BaseContext(PropertyConfiguration(props))
 
-            connectionGeneration.incrementAndGet()
-            _connectionState.value = ConnectionState.Connected
-            lastConfig = config
-            startHealthCheck()
-            Result.success(Unit)
+                // Authentication
+                val authContext = if (config.username.isEmpty()) {
+                    baseContext.withGuestCrendentials()
+                } else {
+                    val auth = NtlmPasswordAuthenticator(
+                        config.domain.ifEmpty { null },
+                        config.username,
+                        config.password
+                    )
+                    baseContext.withCredentials(auth)
+                }
+
+                smbContext = authContext
+                currentShare = config.shareName
+
+                // Test connection by listing root
+                val shareUrl = "smb://${config.host}/${config.shareName}/"
+                val testFile = SmbFile(shareUrl, authContext)
+                testFile.exists() // This will throw if connection fails
+
+                connectionGeneration.incrementAndGet()
+                _connectionState.value = ConnectionState.Connected
+                _isConnected.value = true
+                lastConfig = config
+                startHealthCheck()
+                Result.success(Unit)
+            }
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            disconnect(setState = false)
             _connectionState.value = ConnectionState.Error
+            _isConnected.value = false
             Result.failure(e)
         } finally {
             connectMutex.unlock()
@@ -91,49 +93,52 @@ class SmbConnectionManager @Inject constructor() {
     suspend fun disconnect(setState: Boolean = true) = withContext(Dispatchers.IO) {
         connectionGeneration.incrementAndGet()
         stopHealthCheck()
-        try { diskShare?.close() } catch (_: Exception) {}
-        try { session?.close() } catch (_: Exception) {}
-        try { connection?.close() } catch (_: Exception) {}
-        try { client?.close() } catch (_: Exception) {}
-        diskShare = null
-        session = null
-        connection = null
-        client = null
-        if (setState) _connectionState.value = ConnectionState.Disconnected
+        smbContext = null
+        currentShare = ""
+        if (setState) {
+            _connectionState.value = ConnectionState.Disconnected
+            _isConnected.value = false
+        }
     }
 
     fun openFileStream(path: String): SmbFileStream {
-        val share = diskShare ?: throw SmbNotConnectedException()
-        val file = share.openFile(
-            path,
-            EnumSet.of(AccessMask.GENERIC_READ),
-            null,
-            EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
-            SMB2CreateDisposition.FILE_OPEN,
-            null
-        )
-        return SmbFileStream(file, file.inputStream)
+        val ctx = smbContext ?: throw SmbNotConnectedException()
+        val smbFile = SmbFile(path, ctx)
+        if (!smbFile.exists()) throw SmbNotConnectedException()
+        val stream = SmbFileInputStream(smbFile)
+        return SmbFileStream(smbFile, stream)
     }
 
-    fun currentGeneration(): Int = connectionGeneration.get()
+    fun getFileSize(path: String): Long {
+        val ctx = smbContext ?: return 0L
+        return try {
+            val smbFile = SmbFile(path, ctx)
+            smbFile.length()
+        } catch (_: Exception) { 0L }
+    }
+
+    fun isConnected(): Boolean = _isConnected.value
 
     private fun startHealthCheck() {
         if (healthCheckRunning.get()) return
         healthCheckRunning.set(true)
-        if (healthScope.coroutineContext[Job]?.isActive != true) {
-            healthScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-        }
+        healthScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         healthScope.launch {
             while (healthCheckRunning.get()) {
                 delay(30_000)
                 try {
-                    val alive = diskShare?.folderExists(".") ?: false
-                    if (!alive) {
+                    val ctx = smbContext ?: continue
+                    val testFile = SmbFile("smb://${lastConfig?.host}/${lastConfig?.shareName}/", ctx)
+                    if (!testFile.exists()) {
                         _connectionState.value = ConnectionState.Error
+                        _isConnected.value = false
                         delay(10_000)
                         lastConfig?.let { connect(it) }
                     }
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                    _connectionState.value = ConnectionState.Error
+                    _isConnected.value = false
+                }
             }
         }
     }
@@ -145,11 +150,10 @@ class SmbConnectionManager @Inject constructor() {
 }
 
 data class SmbFileStream(
-    private val file: com.hierynomus.smbj.share.File,
+    private val smbFile: SmbFile,
     val inputStream: InputStream
 ) : AutoCloseable {
     override fun close() {
         try { inputStream.close() } catch (_: Exception) {}
-        try { file.close() } catch (_: Exception) {}
     }
 }

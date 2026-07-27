@@ -14,8 +14,8 @@ android {
         applicationId = "com.example.smbplayer"
         minSdk = 24
         targetSdk = 36
-        versionCode = 34
-        versionName = "3.18.0"
+        versionCode = 35
+        versionName = "3.19.0"
     }
 
     buildTypes {
@@ -65,6 +65,7 @@ dependencies {
 
     // SMB
     implementation(libs.smbj)
+    implementation(libs.jcifs)
 
     // Hilt
     implementation(libs.hilt.android)

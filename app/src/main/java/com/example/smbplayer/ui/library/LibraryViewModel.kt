@@ -80,7 +80,7 @@ class LibraryViewModel @Inject constructor(
         smbLoadJob = viewModelScope.launch {
             _isLoading.value = true
             try {
-                _smbEntries.value = fileBrowser.listFiles(path)
+                _smbEntries.value = fileBrowser.listDirectory(path)
                 _currentPath.value = path
                 _breadcrumbs.value = if (path == ".") listOf(".")
                     else listOf(".") + path.split("/").filter { it.isNotEmpty() }
