@@ -156,9 +156,9 @@ private fun SongList(
     viewModel: LibraryViewModel, playerViewModel: PlayerViewModel,
     modifier: Modifier
 ) {
-    // Collect inside this composable to avoid parent recomposition
+    // Only collect currentTrack here - playHistory is collected separately in RecentPlays
     val currentPlayingTrack by playerViewModel.currentTrack.collectAsState()
-    val playHistory by playerViewModel.playHistory.collectAsState()
+    val currentPlayingUri = remember(currentPlayingTrack) { currentPlayingTrack?.localUri }
     // P6: Shimmer skeleton loading
     if (isLoading) {
         LazyColumn(modifier) {
@@ -284,42 +284,9 @@ private fun SongList(
             }
         }
 
-        // === 最近播放 (始终显示标题) ===
+        // === 最近播放 (collect playHistory only here) ===
         item {
-            Text("最近播放", style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 10.dp))
-        }
-        if (playHistory.isNotEmpty()) {
-            item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(playHistory.take(10), key = { it.smbPath + (it.localUri ?: "") }) { t ->
-                        Card(Modifier.width(140.dp).clickable {
-                            playerViewModel.playTrack(t, playHistory.toList(), playHistory.indexOf(t).coerceAtLeast(0))
-                        }, shape = RoundedCornerShape(10.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                            Column(Modifier.padding(10.dp)) {
-                                Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) {
-                                    if (t.coverArtBytes != null) {
-                                        AsyncImage(model = t.coverArtBytes, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                                    } else {
-                                        Icon(Icons.Filled.MusicNote, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
-                                    }
-                                }
-                                Spacer(Modifier.height(8.dp))
-                                Text(t.title, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onBackground)
-                                Text(t.artist, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            item {
-                Text("暂无播放记录，播放一首歌试试吧", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-            }
+            RecentPlaysSection(playerViewModel)
         }
 
         // Today''s Picks
@@ -637,4 +604,44 @@ private fun ShimmerBox(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = alpha))
     )
+}
+
+/**
+ * Recent plays section - collects playHistory internally to avoid parent recomposition
+ */
+@Composable
+private fun RecentPlaysSection(playerViewModel: PlayerViewModel) {
+    val playHistory by playerViewModel.playHistory.collectAsState()
+
+    Text("最近播放", style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(horizontal = 16.dp).padding(top = 16.dp, bottom = 10.dp))
+
+    if (playHistory.isNotEmpty()) {
+        LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(playHistory.take(10), key = { it.smbPath + (it.localUri ?: "") }) { t ->
+                Card(Modifier.width(140.dp).clickable {
+                    playerViewModel.playTrack(t, playHistory.toList(), playHistory.indexOf(t).coerceAtLeast(0))
+                }, shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(Modifier.padding(10.dp)) {
+                        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) {
+                            if (t.coverArtBytes != null) {
+                                AsyncImage(model = t.coverArtBytes, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            } else {
+                                Icon(Icons.Filled.MusicNote, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(t.title, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onBackground)
+                        Text(t.artist, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    } else {
+        Text("暂无播放记录，播放一首歌试试吧", style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+    }
 }
