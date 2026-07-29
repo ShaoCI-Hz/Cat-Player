@@ -130,7 +130,7 @@ fun SmbPlayerAppContent() {
                 if (playerState !is PlayerState.Idle && playerState !is PlayerState.Error) {
                     PlayerBar(viewModel = playerViewModel, onOpenPlayer = { showPlayerScreen = true })
                 }
-                FloatingNavigationBar(
+                PremiumBottomNavBar(
                     selectedIndex = selectedTab,
                     onTabSelected = { selectedTab = it },
                     tabs = listOf(NavTab("首页", Icons.Filled.Home), NavTab("浏览", Icons.Filled.Search), NavTab("资料库", Icons.Filled.LibraryMusic))
