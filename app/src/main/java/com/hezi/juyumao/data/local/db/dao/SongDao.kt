@@ -10,6 +10,9 @@ interface SongDao {
     @Query("SELECT * FROM songs ORDER BY addedAt DESC")
     fun getAllSongsPaged(): PagingSource<Int, SongEntity>
 
+    @Query("SELECT * FROM songs ORDER BY addedAt DESC")
+    fun getAllSongs(): Flow<List<SongEntity>>
+
     @Query("SELECT * FROM songs ORDER BY lastPlayedAt DESC LIMIT 20")
     fun getRecentlyPlayed(): Flow<List<SongEntity>>
 

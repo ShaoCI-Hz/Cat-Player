@@ -1,11 +1,10 @@
 package com.hezi.juyumao.ui.browse
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,18 +14,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-
-enum class BrowseTab(val label: String) {
-    FOLDER("文件夹"),
-    ALBUM("专辑"),
-    ARTIST("艺术家"),
-    GENRE("流派"),
-}
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.hezi.juyumao.data.local.db.entity.SongEntity
 
 @Composable
-fun BrowseScreen() {
-    var selectedTab by remember { mutableStateOf(BrowseTab.FOLDER) }
+fun BrowseScreen(
+    onSongClick: (List<SongEntity>, Int) -> Unit = { _, _ -> },
+    viewModel: BrowseViewModel = hiltViewModel(),
+) {
+    val allSongs by viewModel.allSongs.collectAsState()
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("全部", "本地", "NAS")
+
+    val filteredSongs = when (selectedTab) {
+        1 -> allSongs.filter { it.source == "LOCAL" }
+        2 -> allSongs.filter { it.source == "SMB" }
+        else -> allSongs
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Spacer(modifier = Modifier.height(48.dp))
@@ -41,133 +47,164 @@ fun BrowseScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         // Tabs
-        ScrollableTabRow(
-            selectedTabIndex = selectedTab.ordinal,
-            containerColor = MaterialTheme.colorScheme.background,
-            contentColor = MaterialTheme.colorScheme.primary,
-            edgePadding = 16.dp,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            BrowseTab.entries.forEach { tab ->
-                Tab(
-                    selected = selectedTab == tab,
-                    onClick = { selectedTab = tab },
-                    text = {
+            tabs.forEachIndexed { index, tab ->
+                FilterChip(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    label = {
                         Text(
-                            text = tab.label,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
+                            text = if (index == 0) "$tab (${allSongs.size})"
+                                   else "$tab (${when(index) {
+                                       1 -> allSongs.count { it.source == "LOCAL" }
+                                       2 -> allSongs.count { it.source == "SMB" }
+                                       else -> 0
+                                   }})",
                         )
                     },
                 )
             }
         }
 
-        // Content
-        when (selectedTab) {
-            BrowseTab.FOLDER -> FolderContent()
-            BrowseTab.ALBUM -> AlbumContent()
-            BrowseTab.ARTIST -> ArtistContent()
-            BrowseTab.GENRE -> GenreContent()
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (filteredSongs.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MusicOff,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(64.dp),
+                    )
+                    Text(
+                        text = if (allSongs.isEmpty()) "暂无歌曲，请先扫描本地音乐"
+                               else "当前筛选无结果",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 160.dp),
+            ) {
+                items(
+                    items = filteredSongs,
+                    key = { it.id },
+                ) { song ->
+                    SongListItem(
+                        song = song,
+                        onClick = {
+                            val index = filteredSongs.indexOf(song)
+                            onSongClick(filteredSongs, index)
+                        },
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun FolderContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+private fun SongListItem(
+    song: SongEntity,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        // 缩略图
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(8.dp),
+                ),
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = Icons.Default.FolderOpen,
+                imageVector = Icons.Default.MusicNote,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(64.dp),
-            )
-            Text(
-                text = "连接 NAS 后浏览文件夹",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp),
             )
         }
+
+        // 歌曲信息
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                // 来源标签
+                val (tagText, tagColor) = if (song.source == "LOCAL") {
+                    "本地" to MaterialTheme.colorScheme.primary
+                } else {
+                    "NAS" to MaterialTheme.colorScheme.tertiary
+                }
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = tagColor.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(4.dp),
+                        )
+                        .padding(horizontal = 4.dp, vertical = 1.dp),
+                ) {
+                    Text(
+                        text = tagText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = tagColor,
+                    )
+                }
+                Text(
+                    text = "${song.artist} · ${song.album}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+        // 时长
+        Text(
+            text = formatDuration(song.duration),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
-@Composable
-private fun AlbumContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Album,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(64.dp),
-            )
-            Text(
-                text = "暂无专辑",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ArtistContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(64.dp),
-            )
-            Text(
-                text = "暂无艺术家",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun GenreContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Category,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(64.dp),
-            )
-            Text(
-                text = "暂无流派",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+private fun formatDuration(ms: Long): String {
+    if (ms <= 0) return ""
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%d:%02d".format(minutes, seconds)
 }

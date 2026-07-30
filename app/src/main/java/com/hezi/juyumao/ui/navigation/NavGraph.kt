@@ -53,7 +53,11 @@ fun JuYuMaoNavGraph(
             )
         }
         composable(Screen.Browse.route) {
-            com.hezi.juyumao.ui.browse.BrowseScreen()
+            com.hezi.juyumao.ui.browse.BrowseScreen(
+                onSongClick = { songs, index ->
+                    onNavigateToPlayer()
+                },
+            )
         }
         composable(Screen.Search.route) {
             SearchScreen()

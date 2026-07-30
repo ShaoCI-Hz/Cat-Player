@@ -22,7 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.hezi.juyumao.ui.components.AnimatedIconButton
-import com.hezi.juyumao.ui.components.PulsingGlow
 import com.hezi.juyumao.ui.components.RotatingAlbumArt
 import com.hezi.juyumao.ui.lyrics.LyricsView
 
@@ -109,10 +108,6 @@ fun PlayerScreen(
                         .fillMaxWidth()
                         .height(280.dp),
                 ) {
-                    PulsingGlow(
-                        color = MaterialTheme.colorScheme.primary,
-                        size = 260.dp,
-                    )
                     RotatingAlbumArt(
                         isPlaying = isPlaying,
                         size = 220.dp,
