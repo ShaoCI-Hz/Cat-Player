@@ -3,6 +3,7 @@ package com.hezi.juyumao.ui.home
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -25,11 +26,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun HomeScreen(
     onNavigateToPlayer: () -> Unit,
+    onNavigateToSmb: () -> Unit = {},
+    onNavigateToEqualizer: () -> Unit = {},
+    onNavigateToQueue: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 160.dp),
+        contentPadding = PaddingValues(bottom = 16.dp),
     ) {
         item {
             Spacer(modifier = Modifier.height(48.dp))
@@ -116,7 +120,7 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    FilledTonalButton(onClick = { }) {
+                    FilledTonalButton(onClick = onNavigateToSmb) {
                         Text("连接")
                     }
                 }
@@ -145,16 +149,19 @@ fun HomeScreen(
                 QuickActionCard(
                     icon = Icons.Default.Equalizer,
                     title = "均衡器",
+                    onClick = onNavigateToEqualizer,
                     modifier = Modifier.weight(1f),
                 )
                 QuickActionCard(
                     icon = Icons.Default.Timer,
                     title = "定时关闭",
+                    onClick = {},
                     modifier = Modifier.weight(1f),
                 )
                 QuickActionCard(
                     icon = Icons.Default.QueueMusic,
                     title = "播放队列",
+                    onClick = onNavigateToQueue,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -232,10 +239,11 @@ private fun StatCard(
 private fun QuickActionCard(
     icon: ImageVector,
     title: String,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),

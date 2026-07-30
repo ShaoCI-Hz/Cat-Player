@@ -20,7 +20,7 @@ fun SettingsScreen(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 160.dp),
+        contentPadding = PaddingValues(bottom = 16.dp),
     ) {
         item {
             Spacer(modifier = Modifier.height(48.dp))

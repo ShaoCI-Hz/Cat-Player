@@ -44,7 +44,12 @@ fun JuYuMaoNavGraph(
         },
     ) {
         composable(Screen.Home.route) {
-            HomeScreen(onNavigateToPlayer = onNavigateToPlayer)
+            HomeScreen(
+                onNavigateToPlayer = onNavigateToPlayer,
+                onNavigateToSmb = { navController.navigate(Screen.SmbConnect.route) },
+                onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
+                onNavigateToQueue = { navController.navigate(Screen.Queue.route) },
+            )
         }
         composable(Screen.Browse.route) {
             com.hezi.juyumao.ui.browse.BrowseScreen()

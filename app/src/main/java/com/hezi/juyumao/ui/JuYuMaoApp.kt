@@ -2,6 +2,8 @@ package com.hezi.juyumao.ui
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
@@ -61,9 +63,15 @@ fun JuYuMaoApp() {
             }
         },
     ) { paddingValues ->
-        JuYuMaoNavGraph(
-            navController = navController,
-            onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+        ) {
+            JuYuMaoNavGraph(
+                navController = navController,
+                onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
+            )
+        }
     }
 }
