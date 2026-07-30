@@ -2,6 +2,7 @@ package com.hezi.juyumao.ui.navigation
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -63,7 +64,22 @@ fun JuYuMaoNavGraph(
                 onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
             )
         }
-        composable(Screen.Player.route) {
+        // Player page: fast fade-only transition, no slide delay
+        composable(
+            route = Screen.Player.route,
+            enterTransition = {
+                fadeIn(animationSpec = tween(200))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(150))
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(200))
+            },
+            popExitTransition = {
+                fadeOut(animationSpec = tween(150))
+            },
+        ) {
             PlayerScreen(onBack = { navController.popBackStack() })
         }
         composable(Screen.Queue.route) {
