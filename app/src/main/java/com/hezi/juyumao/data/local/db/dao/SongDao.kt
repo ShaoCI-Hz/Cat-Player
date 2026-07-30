@@ -36,4 +36,7 @@ interface SongDao {
 
     @Query("DELETE FROM songs")
     suspend fun deleteAll()
+
+    @Query("DELETE FROM songs WHERE source = :source")
+    suspend fun deleteBySource(source: String)
 }
