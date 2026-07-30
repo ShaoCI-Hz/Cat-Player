@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,12 +33,6 @@ fun PlayerScreen(
     var shuffleEnabled by remember { mutableStateOf(false) }
     var repeatMode by remember { mutableIntStateOf(0) }
     var showLyrics by remember { mutableStateOf(false) }
-
-    val albumScale by animateFloatAsState(
-        targetValue = if (isPlaying) 1.0f else 0.95f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
-        label = "album_scale",
-    )
 
     Box(
         modifier = Modifier
@@ -96,40 +89,36 @@ fun PlayerScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(0.3f))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Album art or Lyrics
+            // Album art - fixed size container, no weight
             if (showLyrics) {
                 LyricsView(
                     lyricsData = null,
                     currentPositionMs = 0L,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp),
                 )
             } else {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp),
                 ) {
                     PulsingGlow(
                         color = MaterialTheme.colorScheme.primary,
-                        size = 300.dp,
+                        size = 280.dp,
                     )
-                    Box(
-                        modifier = Modifier
-                            .size(240.dp)
-                            .graphicsLayer {
-                                scaleX = albumScale
-                                scaleY = albumScale
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        RotatingAlbumArt(
-                            isPlaying = isPlaying,
-                            size = 240.dp,
-                        )
-                    }
+                    RotatingAlbumArt(
+                        isPlaying = isPlaying,
+                        size = 240.dp,
+                    )
                 }
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Song info
             Column(

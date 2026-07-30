@@ -36,21 +36,10 @@ fun RotatingAlbumArt(
         label = "album_rotation",
     )
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPlaying) 1.0f else 0.95f,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 300f,
-        ),
-        label = "album_scale",
-    )
-
     Box(
         modifier = modifier
             .size(size)
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
                 rotationZ = if (isPlaying) rotation else 0f
             }
             .shadow(
