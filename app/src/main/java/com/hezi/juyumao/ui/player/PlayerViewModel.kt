@@ -9,6 +9,7 @@ import com.hezi.juyumao.data.repository.MetadataRepository
 import com.hezi.juyumao.player.PlaybackStateHolder
 import com.hezi.juyumao.player.audio.LyricsData
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -31,13 +32,21 @@ class PlayerViewModel @Inject constructor(
     private val _lyrics = MutableStateFlow<LyricsData?>(null)
     val lyrics: StateFlow<LyricsData?> = _lyrics
 
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying: StateFlow<Boolean> = _isPlaying
+    val isPlaying: StateFlow<Boolean> = playbackStateHolder.isPlaying
+    val position: StateFlow<Long> = playbackStateHolder.position
+    val duration: StateFlow<Long> = playbackStateHolder.duration
 
     init {
         val songId = savedStateHandle.get<Long>("songId")
         if (songId != null && songId > 0) {
             loadSong(songId)
+        }
+        // 每 500ms 轮询播放进度
+        viewModelScope.launch {
+            while (true) {
+                delay(500)
+                playbackStateHolder.pollPosition()
+            }
         }
     }
 
@@ -48,12 +57,16 @@ class PlayerViewModel @Inject constructor(
                 _currentSong.value = song
                 playbackStateHolder.updateSong(song)
 
-                // 加载封面
+                // 更新播放记录
+                songDao.update(song.copy(
+                    lastPlayedAt = System.currentTimeMillis(),
+                    playCount = song.playCount + 1,
+                ))
+
                 val artPath = metadataRepository.getCachedArtworkPath(song.id)
                 _artworkUri.value = artPath
                 playbackStateHolder.updateArtwork(artPath)
 
-                // 如果没有缓存封面，尝试提取
                 if (artPath == null && song.source == "LOCAL") {
                     try {
                         val newPath = metadataRepository.extractAndCacheArtwork(song)
@@ -62,7 +75,6 @@ class PlayerViewModel @Inject constructor(
                     } catch (_: Exception) {}
                 }
 
-                // 加载歌词
                 try {
                     _lyrics.value = metadataRepository.getLyrics(song)
                 } catch (_: Exception) {}
@@ -70,8 +82,12 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun seekTo(positionMs: Long) {
+        playbackStateHolder.seekTo(positionMs)
+    }
+
     fun togglePlay() {
-        _isPlaying.value = !_isPlaying.value
-        playbackStateHolder.updatePlaying(_isPlaying.value)
+        val newPlaying = !isPlaying.value
+        playbackStateHolder.updatePlaying(newPlaying)
     }
 }

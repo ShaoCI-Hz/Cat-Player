@@ -47,7 +47,7 @@ fun JuYuMaoNavGraph(
     ) {
         composable(Screen.Home.route) {
             HomeScreen(
-                onNavigateToPlayer = { navController.navigate(Screen.Player.createRoute(0)) },
+                onNavigateToPlayer = { songId -> navController.navigate(Screen.Player.createRoute(songId)) },
                 onNavigateToSmb = { navController.navigate(Screen.SmbConnect.route) },
                 onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
                 onNavigateToQueue = { navController.navigate(Screen.Queue.route) },
