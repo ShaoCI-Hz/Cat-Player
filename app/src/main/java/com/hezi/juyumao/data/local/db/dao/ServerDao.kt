@@ -23,4 +23,13 @@ interface ServerDao {
 
     @Delete
     suspend fun delete(server: ServerEntity)
+
+    @Query("UPDATE servers SET connectionError = :error WHERE id = :serverId")
+    suspend fun updateConnectionError(serverId: Long, error: String?)
+
+    @Query("UPDATE servers SET isOnline = :online WHERE id = :serverId")
+    suspend fun updateOnlineStatus(serverId: Long, online: Boolean)
+
+    @Query("UPDATE servers SET lastScanAt = :time, scannedSongCount = :count WHERE id = :serverId")
+    suspend fun updateScanInfo(serverId: Long, time: Long, count: Int)
 }

@@ -15,4 +15,8 @@ data class ServerEntity(
     val musicPath: String = "/",
     val lastConnectedAt: Long = 0L,
     val autoConnect: Boolean = true,
+    val lastScanAt: Long = 0L,
+    val scannedSongCount: Int = 0,
+    val connectionError: String? = null,
+    val isOnline: Boolean = false,
 )

@@ -12,7 +12,7 @@ import com.hezi.juyumao.data.local.db.entity.SongEntity
 
 @Database(
     entities = [SongEntity::class, ServerEntity::class, PlaylistEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class JuYuMaoDatabase : RoomDatabase() {
@@ -25,7 +25,7 @@ abstract class JuYuMaoDatabase : RoomDatabase() {
                 context,
                 JuYuMaoDatabase::class.java,
                 "juyumao.db",
-            ).build()
+            ).fallbackToDestructiveMigration().build()
         }
     }
 }

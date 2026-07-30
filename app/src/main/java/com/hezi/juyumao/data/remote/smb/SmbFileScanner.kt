@@ -4,23 +4,38 @@ import com.hezi.juyumao.data.local.db.entity.SongEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class SmbFileScanner {
+/**
+ * SMB 文件扫描进度
+ */
+data class ScanProgress(
+    val scannedFiles: Int = 0,
+    val foundSongs: Int = 0,
+    val currentPath: String = "",
+    val isComplete: Boolean = false,
+    val error: String? = null,
+)
 
-    private val audioExtensions = setOf(
-        "mp3", "aac", "flac", "wav", "ogg", "opus",
-        "dsf", "dff", "ape", "wv", "m4a", "wma",
-    )
+class SmbFileScanner {
 
     suspend fun scanDirectory(
         smbClient: SmbClientWrapper,
         path: String,
         serverId: Long,
+        onProgress: (ScanProgress) -> Unit = {},
     ): Result<List<SongEntity>> = withContext(Dispatchers.IO) {
         try {
             val songs = mutableListOf<SongEntity>()
-            scanRecursive(smbClient, path, serverId, songs)
+            var scannedCount = 0
+            scanRecursive(smbClient, path, serverId, songs, onProgress) { scannedCount = it }
+            onProgress(ScanProgress(
+                scannedFiles = scannedCount,
+                foundSongs = songs.size,
+                currentPath = path,
+                isComplete = true,
+            ))
             Result.success(songs)
         } catch (e: Exception) {
+            onProgress(ScanProgress(error = e.message, isComplete = true))
             Result.failure(e)
         }
     }
@@ -30,6 +45,8 @@ class SmbFileScanner {
         path: String,
         serverId: Long,
         result: MutableList<SongEntity>,
+        onProgress: (ScanProgress) -> Unit,
+        scannedCountRef: (Int) -> Unit,
     ) {
         val filesResult = smbClient.listFiles(path)
         if (filesResult.isFailure) return
@@ -38,54 +55,39 @@ class SmbFileScanner {
 
         for (file in files) {
             if (file.isDirectory) {
-                scanRecursive(smbClient, file.path, serverId, result)
-            } else if (isAudioFile(file.name)) {
+                // 排除系统目录
+                if (!AudioFileFilter.isExcludedPath(file.path)) {
+                    scanRecursive(smbClient, file.path, serverId, result, onProgress, scannedCountRef)
+                }
+            } else if (AudioFileFilter.isAudioFile(file.name)
+                && !AudioFileFilter.isExcludedPath(file.path)
+                && !AudioFileFilter.isExcludedFileName(file.name)
+                && file.size >= 100_000 // 最小 100KB
+            ) {
+                // 从目录结构推断元数据
+                val (artist, album, title) = AudioFileFilter.inferMetadata(file.path)
+
                 result.add(
                     SongEntity(
-                        title = extractTitle(file.name),
-                        artist = "未知艺术家",
-                        album = "未知专辑",
+                        title = title,
+                        artist = artist,
+                        album = album,
                         filePath = file.path,
                         fileSize = file.size,
-                        mimeType = getMimeType(file.name),
-                        isHiRes = isHiRes(file.name),
+                        mimeType = AudioFileFilter.getMimeType(file.name),
+                        isHiRes = AudioFileFilter.isHiRes(file.name),
                         source = "SMB",
                         smbServerId = serverId,
                         smbSharePath = file.path,
                     )
                 )
             }
-        }
-    }
-
-    private fun isAudioFile(name: String): Boolean {
-        val ext = name.substringAfterLast('.', "").lowercase()
-        return ext in audioExtensions
-    }
-
-    private fun isHiRes(name: String): Boolean {
-        val ext = name.substringAfterLast('.', "").lowercase()
-        return ext in setOf("dsf", "dff", "flac", "ape", "wv")
-    }
-
-    private fun extractTitle(fileName: String): String {
-        return fileName.substringBeforeLast('.').trim()
-    }
-
-    private fun getMimeType(fileName: String): String {
-        val ext = fileName.substringAfterLast('.', "").lowercase()
-        return when (ext) {
-            "mp3" -> "audio/mpeg"
-            "aac", "m4a" -> "audio/mp4"
-            "flac" -> "audio/flac"
-            "wav" -> "audio/wav"
-            "ogg" -> "audio/ogg"
-            "opus" -> "audio/opus"
-            "dsf", "dff" -> "audio/dsd"
-            "ape" -> "audio/ape"
-            "wv" -> "audio/wavpack"
-            "wma" -> "audio/x-ms-wma"
-            else -> "audio/*"
+            scannedCountRef(result.size)
+            onProgress(ScanProgress(
+                scannedFiles = result.size,
+                foundSongs = result.size,
+                currentPath = file.path,
+            ))
         }
     }
 }
