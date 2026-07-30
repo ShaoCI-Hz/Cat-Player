@@ -103,6 +103,52 @@ fun SettingsScreen(
             }
         }
 
+        // Lyrics section
+        item {
+            SettingsSection(title = "歌词") {
+                var fontSize by remember { mutableFloatStateOf(18f) }
+                var fontBold by remember { mutableStateOf(true) }
+                SettingsItem(
+                    icon = Icons.Default.Lyrics,
+                    title = "歌词字体大小",
+                    subtitle = "${fontSize.toInt()} sp",
+                    onClick = { },
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("14sp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Slider(
+                        value = fontSize,
+                        onValueChange = { fontSize = it },
+                        valueRange = 14f..28f,
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                    Text("28sp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { fontBold = !fontBold }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Icon(Icons.Default.FormatBold, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
+                    Text("歌词加粗", style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    Switch(checked = fontBold, onCheckedChange = { fontBold = it })
+                }
+            }
+        }
+
         // About section
         item {
             SettingsSection(title = "关于") {

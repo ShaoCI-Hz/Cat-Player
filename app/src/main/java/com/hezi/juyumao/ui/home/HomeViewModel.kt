@@ -79,11 +79,15 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun refreshWeather() {
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val url = java.net.URL("https://wttr.in/?format=%t+%C&lang=zh")
-                val weather = url.readText().trim()
-                if (weather.isNotEmpty() && !weather.contains("Unknown")) {
+                val conn = java.net.URL("https://wttr.in/?format=%t+%C&lang=zh").openConnection() as java.net.HttpURLConnection
+                conn.setRequestProperty("User-Agent", "curl/7.64.1")
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                val weather = conn.inputStream.bufferedReader().readText().trim()
+                conn.disconnect()
+                if (weather.isNotEmpty() && !weather.contains("Unknown") && !weather.contains("ERROR")) {
                     _uiState.value = _uiState.value.copy(
                         dailyCard = _uiState.value.dailyCard.copy(weatherText = weather)
                     )
