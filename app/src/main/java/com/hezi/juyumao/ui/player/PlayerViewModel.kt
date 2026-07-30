@@ -97,8 +97,23 @@ class PlayerViewModel @Inject constructor(
                 _lyrics.value = metadataRepository.getLyrics(song)
             } catch (_: Exception) {}
 
-            // 设置 ExoPlayer 并播放
-            exoPlayer.setMediaItem(MediaItem.fromUri(song.filePath))
+            // 设置 ExoPlayer 并播放（带元数据，通知栏显示歌曲信息）
+            val mediaItem = MediaItem.Builder()
+                .setUri(song.filePath)
+                .setMediaMetadata(
+                    androidx.media3.common.MediaMetadata.Builder()
+                        .setTitle(song.title)
+                        .setArtist(song.artist)
+                        .setAlbumTitle(song.album)
+                        .also { builder ->
+                            if (artPath != null) {
+                                builder.setArtworkUri(android.net.Uri.parse("file://$artPath"))
+                            }
+                        }
+                        .build()
+                )
+                .build()
+            exoPlayer.setMediaItem(mediaItem)
             exoPlayer.prepare()
             exoPlayer.playWhenReady = true
             playbackStateHolder.updatePlaying(true)

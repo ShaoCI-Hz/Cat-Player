@@ -1,11 +1,7 @@
 package com.hezi.juyumao.player
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Intent
-import android.os.Build
-import androidx.core.app.NotificationCompat
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -13,6 +9,11 @@ import androidx.media3.session.MediaSessionService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+/**
+ * 音乐播放服务
+ * MediaSessionService 自动管理通知栏控件（上一首/播放暂停/下一首）
+ * 不需要手动创建通知
+ */
 @AndroidEntryPoint
 class MusicPlayerService : MediaSessionService() {
 
@@ -21,50 +22,10 @@ class MusicPlayerService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
 
-    companion object {
-        private const val CHANNEL_ID = "juyumao_playback"
-        private const val NOTIFICATION_ID = 1
-    }
-
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        mediaSession = MediaSession.Builder(this, exoPlayer).build()
-        // 启动前台通知
-        startForeground(NOTIFICATION_ID, buildNotification())
-        // 监听播放状态，更新通知
-        exoPlayer.addListener(object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) {
-                    startForeground(NOTIFICATION_ID, buildNotification())
-                }
-            }
-            override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
-                startForeground(NOTIFICATION_ID, buildNotification())
-            }
-        })
-    }
-
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "音乐播放",
-            NotificationManager.IMPORTANCE_LOW,
-        ).apply {
-            description = "局域猫播放器正在播放音乐"
-            setShowBadge(false)
-        }
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(channel)
-    }
-
-    private fun buildNotification(): Notification {
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("局域猫播放器")
-            .setContentText(if (exoPlayer.mediaItemCount > 0) "正在播放..." else "准备播放")
-            .setSmallIcon(android.R.drawable.ic_media_play)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+        mediaSession = MediaSession.Builder(this, exoPlayer)
+            .setCallback(MediaSessionCallback())
             .build()
     }
 
@@ -86,5 +47,10 @@ class MusicPlayerService : MediaSessionService() {
         }
         mediaSession = null
         super.onDestroy()
+    }
+
+    private inner class MediaSessionCallback : MediaSession.Callback {
+        // 通知栏控件的回调由系统自动处理
+        // play/pause/next/prev 都通过 MediaSession 的 Player 接口自动映射
     }
 }
