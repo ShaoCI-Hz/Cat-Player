@@ -76,10 +76,12 @@ private fun JuYuMaoAppContent() {
             }
         },
     ) { paddingValues ->
+        // 播放页面自己处理 inset，不应用 Scaffold padding（避免底栏隐藏动画导致跳动）
+        val isPlayerPage = currentRoute == Screen.Player.route
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .then(if (!isPlayerPage) Modifier.padding(paddingValues) else Modifier),
         ) {
             JuYuMaoNavGraph(
                 navController = navController,
