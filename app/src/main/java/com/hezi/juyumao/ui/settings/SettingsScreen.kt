@@ -105,13 +105,13 @@ fun SettingsScreen(
 
         // Lyrics section
         item {
+            val lyricsFontSize by viewModel.lyricsFontSize.collectAsState()
+            val lyricsFontBold by viewModel.lyricsFontBold.collectAsState()
             SettingsSection(title = "歌词") {
-                var fontSize by remember { mutableFloatStateOf(18f) }
-                var fontBold by remember { mutableStateOf(true) }
                 SettingsItem(
                     icon = Icons.Default.Lyrics,
                     title = "歌词字体大小",
-                    subtitle = "${fontSize.toInt()} sp",
+                    subtitle = "${lyricsFontSize.toInt()} sp",
                     onClick = { },
                 )
                 Row(
@@ -122,8 +122,8 @@ fun SettingsScreen(
                 ) {
                     Text("14sp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Slider(
-                        value = fontSize,
-                        onValueChange = { fontSize = it },
+                        value = lyricsFontSize,
+                        onValueChange = { viewModel.setLyricsFontSize(it) },
                         valueRange = 14f..28f,
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                         colors = SliderDefaults.colors(
@@ -136,7 +136,7 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { fontBold = !fontBold }
+                        .clickable { viewModel.setLyricsFontBold(!lyricsFontBold) }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -144,7 +144,7 @@ fun SettingsScreen(
                     Icon(Icons.Default.FormatBold, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
                     Text("歌词加粗", style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                    Switch(checked = fontBold, onCheckedChange = { fontBold = it })
+                    Switch(checked = lyricsFontBold, onCheckedChange = { viewModel.setLyricsFontBold(it) })
                 }
             }
         }

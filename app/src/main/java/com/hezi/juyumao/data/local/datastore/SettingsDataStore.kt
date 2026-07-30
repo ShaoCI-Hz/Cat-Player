@@ -17,6 +17,8 @@ class SettingsDataStore(private val context: Context) {
         private val SMB_CONNECTION_TIMEOUT = intPreferencesKey("smb_connection_timeout")
         private val AUDIO_BUFFER_SIZE = intPreferencesKey("audio_buffer_size")
         private val GAPLESS_PLAYBACK = booleanPreferencesKey("gapless_playback")
+        private val LYRICS_FONT_SIZE = floatPreferencesKey("lyrics_font_size")
+        private val LYRICS_FONT_BOLD = booleanPreferencesKey("lyrics_font_bold")
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "dark" }
@@ -24,6 +26,8 @@ class SettingsDataStore(private val context: Context) {
     val smbConnectionTimeout: Flow<Int> = context.dataStore.data.map { it[SMB_CONNECTION_TIMEOUT] ?: 30 }
     val audioBufferSize: Flow<Int> = context.dataStore.data.map { it[AUDIO_BUFFER_SIZE] ?: 256 }
     val gaplessPlayback: Flow<Boolean> = context.dataStore.data.map { it[GAPLESS_PLAYBACK] ?: false }
+    val lyricsFontSize: Flow<Float> = context.dataStore.data.map { it[LYRICS_FONT_SIZE] ?: 18f }
+    val lyricsFontBold: Flow<Boolean> = context.dataStore.data.map { it[LYRICS_FONT_BOLD] ?: true }
 
     suspend fun setThemeMode(mode: String) {
         context.dataStore.edit { it[THEME_MODE] = mode }
@@ -43,5 +47,13 @@ class SettingsDataStore(private val context: Context) {
 
     suspend fun setGaplessPlayback(enabled: Boolean) {
         context.dataStore.edit { it[GAPLESS_PLAYBACK] = enabled }
+    }
+
+    suspend fun setLyricsFontSize(size: Float) {
+        context.dataStore.edit { it[LYRICS_FONT_SIZE] = size }
+    }
+
+    suspend fun setLyricsFontBold(bold: Boolean) {
+        context.dataStore.edit { it[LYRICS_FONT_BOLD] = bold }
     }
 }

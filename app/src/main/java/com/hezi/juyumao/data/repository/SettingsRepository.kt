@@ -23,6 +23,8 @@ class SettingsRepository @Inject constructor(
     val smbConnectionTimeout: Flow<Int> = settingsDataStore.smbConnectionTimeout
     val audioBufferSize: Flow<Int> = settingsDataStore.audioBufferSize
     val gaplessPlayback: Flow<Boolean> = settingsDataStore.gaplessPlayback
+    val lyricsFontSize: Flow<Float> = settingsDataStore.lyricsFontSize
+    val lyricsFontBold: Flow<Boolean> = settingsDataStore.lyricsFontBold
 
     suspend fun setThemeMode(mode: ThemeMode) {
         settingsDataStore.setThemeMode(
@@ -38,4 +40,6 @@ class SettingsRepository @Inject constructor(
     suspend fun setSmbConnectionTimeout(seconds: Int) = settingsDataStore.setSmbConnectionTimeout(seconds)
     suspend fun setAudioBufferSize(kb: Int) = settingsDataStore.setAudioBufferSize(kb)
     suspend fun setGaplessPlayback(enabled: Boolean) = settingsDataStore.setGaplessPlayback(enabled)
+    suspend fun setLyricsFontSize(size: Float) = settingsDataStore.setLyricsFontSize(size)
+    suspend fun setLyricsFontBold(bold: Boolean) = settingsDataStore.setLyricsFontBold(bold)
 }

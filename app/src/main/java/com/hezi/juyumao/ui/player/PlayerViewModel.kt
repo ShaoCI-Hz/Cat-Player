@@ -11,6 +11,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.hezi.juyumao.data.local.db.dao.SongDao
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 import com.hezi.juyumao.data.repository.MetadataRepository
+import com.hezi.juyumao.data.repository.SettingsRepository
 import com.hezi.juyumao.player.MusicPlayerService
 import com.hezi.juyumao.player.PlaybackStateHolder
 import com.hezi.juyumao.player.audio.LyricsData
@@ -18,6 +19,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,6 +32,7 @@ class PlayerViewModel @Inject constructor(
     private val metadataRepository: MetadataRepository,
     private val playbackStateHolder: PlaybackStateHolder,
     private val exoPlayer: ExoPlayer,
+    private val settingsRepository: SettingsRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -44,6 +48,10 @@ class PlayerViewModel @Inject constructor(
     val isPlaying: StateFlow<Boolean> = playbackStateHolder.isPlaying
     val position: StateFlow<Long> = playbackStateHolder.position
     val duration: StateFlow<Long> = playbackStateHolder.duration
+    val lyricsFontSize: StateFlow<Float> = settingsRepository.lyricsFontSize
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 18f)
+    val lyricsFontBold: StateFlow<Boolean> = settingsRepository.lyricsFontBold
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     init {
         val songId = savedStateHandle.get<Long>("songId")

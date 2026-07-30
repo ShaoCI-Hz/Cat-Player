@@ -11,12 +11,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.hezi.juyumao.player.audio.LyricLine
 import com.hezi.juyumao.player.audio.LyricsData
 import com.hezi.juyumao.player.audio.LrcParser
 import kotlinx.coroutines.launch
@@ -26,18 +24,14 @@ fun LyricsView(
     lyricsData: LyricsData?,
     currentPositionMs: Long,
     modifier: Modifier = Modifier,
+    fontSize: Float = 18f,
+    fontBold: Boolean = true,
     onLineClick: ((Long) -> Unit)? = null,
 ) {
     if (lyricsData == null || lyricsData.lines.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "暂无歌词",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("暂无歌词", style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
     }
@@ -52,10 +46,7 @@ fun LyricsView(
     LaunchedEffect(currentIndex) {
         if (currentIndex >= 0) {
             coroutineScope.launch {
-                listState.animateScrollToItem(
-                    index = maxOf(0, currentIndex - 3),
-                    scrollOffset = 0,
-                )
+                listState.animateScrollToItem(index = maxOf(0, currentIndex - 3), scrollOffset = 0)
             }
         }
     }
@@ -80,12 +71,9 @@ fun LyricsView(
                 label = "lyric_alpha",
             )
 
-            val fontSize by animateFloatAsState(
-                targetValue = if (isCurrent) 20f else 16f,
-                animationSpec = spring(
-                    dampingRatio = 0.6f,
-                    stiffness = 300f,
-                ),
+            val currentFontSize by animateFloatAsState(
+                targetValue = if (isCurrent) fontSize + 2f else fontSize,
+                animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
                 label = "lyric_font_size",
             )
 
@@ -94,12 +82,9 @@ fun LyricsView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .alpha(alpha)
-                    .padding(
-                        horizontal = 24.dp,
-                        vertical = if (isCurrent) 8.dp else 4.dp,
-                    ),
-                fontSize = fontSize.sp,
-                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                    .padding(horizontal = 24.dp, vertical = if (isCurrent) 8.dp else 4.dp),
+                fontSize = currentFontSize.sp,
+                fontWeight = if (isCurrent && fontBold) FontWeight.Bold else FontWeight.Normal,
                 color = if (isCurrent) MaterialTheme.colorScheme.primary
                        else MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

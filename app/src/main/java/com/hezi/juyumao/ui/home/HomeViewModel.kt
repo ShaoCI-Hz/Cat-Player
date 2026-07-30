@@ -81,16 +81,22 @@ class HomeViewModel @Inject constructor(
     private fun refreshWeather() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val conn = java.net.URL("https://wttr.in/?format=%t+%C&lang=zh").openConnection() as java.net.HttpURLConnection
+                // 用 3 行纯文本格式，避免编码问题
+                val conn = java.net.URL("https://wttr.in/?format=3").openConnection() as java.net.HttpURLConnection
                 conn.setRequestProperty("User-Agent", "curl/7.64.1")
                 conn.connectTimeout = 5000
                 conn.readTimeout = 5000
-                val weather = conn.inputStream.bufferedReader().readText().trim()
+                val raw = conn.inputStream.bufferedReader().readText().trim()
                 conn.disconnect()
-                if (weather.isNotEmpty() && !weather.contains("Unknown") && !weather.contains("ERROR")) {
-                    _uiState.value = _uiState.value.copy(
-                        dailyCard = _uiState.value.dailyCard.copy(weatherText = weather)
-                    )
+                // raw 格式: "城市 +28°C 晴" 或 "+28°C 晴"
+                if (raw.isNotEmpty() && !raw.contains("Unknown") && !raw.contains("ERROR") && !raw.contains("Sorry")) {
+                    // 提取温度和天气描述
+                    val weather = raw.replace(Regex(".*?([+-]?\\d+°C.*)"), "$1").trim()
+                    if (weather.isNotEmpty()) {
+                        _uiState.value = _uiState.value.copy(
+                            dailyCard = _uiState.value.dailyCard.copy(weatherText = weather)
+                        )
+                    }
                 }
             } catch (_: Exception) {}
         }

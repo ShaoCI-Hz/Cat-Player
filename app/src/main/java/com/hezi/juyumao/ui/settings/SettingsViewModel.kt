@@ -19,9 +19,21 @@ class SettingsViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.DARK)
 
+    val lyricsFontSize: StateFlow<Float> = settingsRepository.lyricsFontSize
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 18f)
+
+    val lyricsFontBold: StateFlow<Boolean> = settingsRepository.lyricsFontBold
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     fun setThemeMode(mode: ThemeMode) {
-        viewModelScope.launch {
-            settingsRepository.setThemeMode(mode)
-        }
+        viewModelScope.launch { settingsRepository.setThemeMode(mode) }
+    }
+
+    fun setLyricsFontSize(size: Float) {
+        viewModelScope.launch { settingsRepository.setLyricsFontSize(size) }
+    }
+
+    fun setLyricsFontBold(bold: Boolean) {
+        viewModelScope.launch { settingsRepository.setLyricsFontBold(bold) }
     }
 }

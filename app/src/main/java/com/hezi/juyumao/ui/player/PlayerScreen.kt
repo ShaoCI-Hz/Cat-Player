@@ -32,6 +32,8 @@ fun PlayerScreen(
     val isPlaying by viewModel.isPlaying.collectAsState()
     val position by viewModel.position.collectAsState()
     val duration by viewModel.duration.collectAsState()
+    val lyricsFontSize by viewModel.lyricsFontSize.collectAsState()
+    val lyricsFontBold by viewModel.lyricsFontBold.collectAsState()
     var shuffleEnabled by remember { mutableStateOf(false) }
     var repeatMode by remember { mutableIntStateOf(0) }
     var showLyrics by remember { mutableStateOf(false) }
@@ -67,7 +69,8 @@ fun PlayerScreen(
         // 专辑封面 或 歌词
         if (showLyrics) {
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                LyricsView(lyricsData = lyrics, currentPositionMs = position, modifier = Modifier.fillMaxSize())
+                LyricsView(lyricsData = lyrics, currentPositionMs = position, modifier = Modifier.fillMaxSize(),
+                    fontSize = lyricsFontSize, fontBold = lyricsFontBold)
             }
         } else {
             Box(modifier = Modifier.fillMaxWidth().height(280.dp), contentAlignment = Alignment.Center) {
