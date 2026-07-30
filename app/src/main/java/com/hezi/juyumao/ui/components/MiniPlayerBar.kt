@@ -18,6 +18,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+import java.io.File
 
 @Composable
 fun MiniPlayerBar(
@@ -55,8 +58,12 @@ fun MiniPlayerBar(
             ) {
                 // 封面缩略图
                 if (artworkUri != null) {
+                    val context = LocalContext.current
                     AsyncImage(
-                        model = artworkUri,
+                        model = ImageRequest.Builder(context)
+                            .data(File(artworkUri))
+                            .crossfade(true)
+                            .build(),
                         contentDescription = null,
                         modifier = Modifier
                             .size(40.dp)

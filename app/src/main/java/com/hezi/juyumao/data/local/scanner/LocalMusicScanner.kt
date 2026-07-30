@@ -1,9 +1,10 @@
 package com.hezi.juyumao.data.local.scanner
 
 import android.content.Context
-import android.net.Uri
 import android.provider.MediaStore
+import com.hezi.juyumao.data.local.artwork.ArtworkCache
 import com.hezi.juyumao.data.local.db.entity.SongEntity
+import com.hezi.juyumao.data.local.metadata.MetadataExtractor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,56 +14,33 @@ import javax.inject.Singleton
 @Singleton
 class LocalMusicScanner @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val metadataExtractor: MetadataExtractor,
+    private val artworkCache: ArtworkCache,
 ) {
     companion object {
-        // 文件扩展名白名单
         private val AUDIO_EXTENSIONS = setOf(
             "mp3", "aac", "m4a", "ogg", "opus", "wma", "wav", "flac",
             "dsf", "dff", "ape", "wv", "aiff", "aif",
         )
-
-        // Hi-Res 格式扩展名
         private val HIRES_EXTENSIONS = setOf("dsf", "dff", "ape", "wv", "aiff", "aif", "flac")
-
-        // 排除的目录关键词（路径中包含这些的都不是用户音乐）
         private val EXCLUDED_DIR_PATTERNS = listOf(
-            "/Notifications/",
-            "/Ringtones/",
-            "/Alarms/",
-            "/Recordings/",
-            "/Voice Recorder/",
-            "/Android/data/",
-            "/Android/obb/",
-            "/.微信/",
-            "/Tencent/",
-            "/tencent/",
-            "/WhatsApp/",
-            "/com.",
+            "/Notifications/", "/Ringtones/", "/Alarms/",
+            "/Recordings/", "/Voice Recorder/",
+            "/Android/data/", "/Android/obb/",
+            "/.微信/", "/Tencent/", "/tencent/",
+            "/WhatsApp/", "/com.",
         )
-
-        // 排除的文件名关键词
         private val EXCLUDED_FILENAME_KEYWORDS = listOf(
-            "ringtone", "notification", "alarm", "voice_record",
-            "wechat", "微信语音",
+            "ringtone", "notification", "alarm", "voice_record", "wechat", "微信语音",
         )
-
-        // 最小时长：30秒
         private const val MIN_DURATION_MS = 30_000L
-
-        // 最小文件大小：100KB
         private const val MIN_FILE_SIZE_BYTES = 100_000L
-
-        // 批量插入每批数量
-        private const val BATCH_SIZE = 200
     }
 
-    /**
-     * 扫描设备上所有本地音乐，返回 SongEntity 列表
-     */
     suspend fun scanAllMusic(): Result<List<SongEntity>> = withContext(Dispatchers.IO) {
         try {
             val songs = mutableListOf<SongEntity>()
-            val seenPaths = HashSet<String>() // 去重用
+            val seenPaths = HashSet<String>()
 
             val projection = arrayOf(
                 MediaStore.Audio.Media._ID,
@@ -80,14 +58,10 @@ class LocalMusicScanner @Inject constructor(
                 MediaStore.Audio.Media.IS_NOTIFICATION,
             )
 
-            val sortOrder = "${MediaStore.Audio.Media.DATE_ADDED} DESC"
-
             context.contentResolver.query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                null,
-                null,
-                sortOrder,
+                projection, null, null,
+                "${MediaStore.Audio.Media.DATE_ADDED} DESC",
             )?.use { cursor ->
                 val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                 val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
@@ -113,42 +87,87 @@ class LocalMusicScanner @Inject constructor(
                     val isAlarm = cursor.getInt(isAlarmCol)
                     val isNotif = cursor.getInt(isNotifCol)
 
-                    // 过滤判断
-                    if (!isValidMusicFile(
-                            filePath = filePath,
-                            duration = duration,
-                            fileSize = fileSize,
-                            title = title,
-                            isMusic = isMusic,
-                            isRingtone = isRingtone,
-                            isAlarm = isAlarm,
-                            isNotification = isNotif,
-                        )
-                    ) continue
-
-                    // 按路径去重
+                    if (!isValidMusicFile(filePath, duration, fileSize, title, isMusic, isRingtone, isAlarm, isNotif)) continue
                     if (!seenPaths.add(filePath.lowercase())) continue
 
-                    val artist = cursor.getString(artistCol) ?: "未知艺术家"
-                    val album = cursor.getString(albumCol) ?: "未知专辑"
+                    // 基础元数据来自 MediaStore
+                    val mediaStoreArtist = cursor.getString(artistCol) ?: "未知艺术家"
+                    val mediaStoreAlbum = cursor.getString(albumCol) ?: "未知专辑"
                     val albumId = cursor.getLong(albumIdCol)
                     val mimeType = cursor.getString(mimeCol) ?: inferMimeType(filePath)
-                    val albumArtUri = getAlbumArtUri(albumId)
+
+                    // 尝试用 jaudiotagger 提取增强元数据
+                    var enhancedTitle: String? = null
+                    var enhancedArtist: String? = null
+                    var enhancedAlbum: String? = null
+                    var enhancedAlbumArtist: String? = null
+                    var trackNumber = 0
+                    var discNumber = 0
+                    var year = 0
+                    var genre: String? = null
+                    var composer: String? = null
+                    var bitrate = 0
+                    var sampleRate = 0
+                    var bitsPerSample = 0
+                    var hasEmbeddedLyrics = false
+                    var artworkPath: String? = null
+
+                    try {
+                        val meta = metadataExtractor.extract(filePath)
+
+                        // 使用增强元数据（如果有的话）
+                        enhancedTitle = meta.title
+                        enhancedArtist = meta.artist
+                        enhancedAlbum = meta.album
+                        enhancedAlbumArtist = meta.albumArtist
+                        trackNumber = meta.trackNumber ?: 0
+                        discNumber = meta.discNumber ?: 0
+                        year = meta.year ?: 0
+                        genre = meta.genre
+                        composer = meta.composer
+                        bitrate = meta.bitrate
+                        sampleRate = meta.sampleRate
+                        bitsPerSample = meta.bitsPerSample
+                        hasEmbeddedLyrics = meta.embeddedLyrics != null
+
+                        // 缓存封面到本地文件
+                        if (meta.artworkData != null && meta.artworkData.isNotEmpty()) {
+                            // 用 filePath 的 hashCode 作为 songId 的临时替代
+                            val tempId = filePath.hashCode().toLong()
+                            artworkPath = artworkCache.saveArtwork(tempId, meta.artworkData)
+                        }
+                    } catch (_: Exception) {
+                        // 元数据提取失败，使用 MediaStore 数据
+                    }
+
+                    // 检查是否有外挂 .lrc
+                    val hasExternalLrc = checkExternalLrc(filePath)
 
                     songs.add(
                         SongEntity(
-                            title = title ?: filePath.substringAfterLast('/').substringBeforeLast('.'),
-                            artist = artist,
-                            album = album,
-                            albumArtUri = albumArtUri,
+                            title = enhancedTitle ?: title ?: filePath.substringAfterLast('/').substringBeforeLast('.'),
+                            artist = enhancedArtist ?: mediaStoreArtist,
+                            album = enhancedAlbum ?: mediaStoreAlbum,
+                            albumArtist = enhancedAlbumArtist,
+                            albumArtUri = artworkPath,
                             duration = duration,
                             filePath = filePath,
                             fileSize = fileSize,
                             mimeType = mimeType,
-                            isHiRes = isHiRes(filePath),
+                            isHiRes = isHiRes(filePath, sampleRate),
                             source = "LOCAL",
                             smbServerId = null,
                             smbSharePath = null,
+                            trackNumber = trackNumber,
+                            discNumber = discNumber,
+                            year = year,
+                            genre = genre,
+                            composer = composer,
+                            bitrate = bitrate,
+                            sampleRate = sampleRate,
+                            bitsPerSample = bitsPerSample,
+                            hasEmbeddedLyrics = hasEmbeddedLyrics,
+                            hasExternalLyrics = hasExternalLrc,
                         )
                     )
                 }
@@ -160,92 +179,50 @@ class LocalMusicScanner @Inject constructor(
         }
     }
 
-    /**
-     * 过滤判断：是否是有效音乐文件
-     */
     private fun isValidMusicFile(
-        filePath: String,
-        duration: Long,
-        fileSize: Long,
-        title: String?,
-        isMusic: Int,
-        isRingtone: Int,
-        isAlarm: Int,
-        isNotification: Int,
+        filePath: String, duration: Long, fileSize: Long, title: String?,
+        isMusic: Int, isRingtone: Int, isAlarm: Int, isNotification: Int,
     ): Boolean {
-        // 基础过滤：必须被系统标记为音乐
         if (isMusic != 1) return false
-
-        // 排除铃声/闹钟/通知（被系统同时标记为这些的）
-        if (isRingtone == 1 && isMusic != 1) return false
-        if (isAlarm == 1 && isMusic != 1) return false
-        if (isNotification == 1 && isMusic != 1) return false
-
-        // 扩展名白名单
         val ext = filePath.substringAfterLast('.', "").lowercase()
         if (ext !in AUDIO_EXTENSIONS) return false
-
-        // 时长过滤：< 30秒不是歌曲
         if (duration < MIN_DURATION_MS) return false
-
-        // 文件大小过滤：< 100KB 不是完整歌曲
         if (fileSize < MIN_FILE_SIZE_BYTES) return false
-
-        // 路径过滤：排除系统/应用目录
         val pathLower = filePath.lowercase()
         for (pattern in EXCLUDED_DIR_PATTERNS) {
             if (pathLower.contains(pattern.lowercase())) return false
         }
-
-        // 文件名关键词过滤
         val fileName = filePath.substringAfterLast('/').lowercase()
         for (keyword in EXCLUDED_FILENAME_KEYWORDS) {
             if (fileName.contains(keyword.lowercase())) return false
         }
-
         return true
     }
 
-    /**
-     * 判断是否 Hi-Res
-     */
-    private fun isHiRes(filePath: String, sampleRate: Int? = null): Boolean {
-        // 按采样率判断
-        if (sampleRate != null && sampleRate > 44100) return true
-        // 按扩展名判断
+    private fun isHiRes(filePath: String, sampleRate: Int = 0): Boolean {
+        if (sampleRate > 44100) return true
         val ext = filePath.substringAfterLast('.', "").lowercase()
         return ext in HIRES_EXTENSIONS
     }
 
-    /**
-     * 提取专辑封面 URI
-     */
-    private fun getAlbumArtUri(albumId: Long): String? {
-        return try {
-            val uri = Uri.parse("content://media/external/audio/albumart")
-            Uri.withAppendedPath(uri, albumId.toString()).toString()
-        } catch (_: Exception) {
-            null
-        }
+    /** 检查同目录是否有外挂 .lrc 文件 */
+    private fun checkExternalLrc(filePath: String): Boolean {
+        val file = java.io.File(filePath)
+        val baseName = file.nameWithoutExtension
+        val parentDir = file.parentFile ?: return false
+        return parentDir.listFiles()?.any {
+            it.extension.lowercase() == "lrc" &&
+            it.nameWithoutExtension.equals(baseName, ignoreCase = true)
+        } ?: false
     }
 
-    /**
-     * 从文件路径推断 MIME 类型
-     */
     private fun inferMimeType(filePath: String): String {
         val ext = filePath.substringAfterLast('.', "").lowercase()
         return when (ext) {
-            "mp3" -> "audio/mpeg"
-            "aac", "m4a" -> "audio/mp4"
-            "flac" -> "audio/flac"
-            "wav" -> "audio/wav"
-            "ogg" -> "audio/ogg"
-            "opus" -> "audio/opus"
-            "dsf", "dff" -> "audio/dsd"
-            "ape" -> "audio/ape"
-            "wv" -> "audio/wavpack"
-            "wma" -> "audio/x-ms-wma"
-            "aiff", "aif" -> "audio/aiff"
+            "mp3" -> "audio/mpeg"; "aac", "m4a" -> "audio/mp4"; "flac" -> "audio/flac"
+            "wav" -> "audio/wav"; "ogg" -> "audio/ogg"; "opus" -> "audio/opus"
+            "dsf", "dff" -> "audio/dsd"; "ape" -> "audio/ape"; "wv" -> "audio/wavpack"
+            "wma" -> "audio/x-ms-wma"; "aiff", "aif" -> "audio/aiff"
             else -> "audio/*"
         }
     }

@@ -19,6 +19,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+import java.io.File
 
 @Composable
 fun RotatingAlbumArt(
@@ -54,8 +57,12 @@ fun RotatingAlbumArt(
         contentAlignment = Alignment.Center,
     ) {
         if (artworkUri != null) {
+            val context = LocalContext.current
             AsyncImage(
-                model = artworkUri,
+                model = ImageRequest.Builder(context)
+                    .data(File(artworkUri))
+                    .crossfade(true)
+                    .build(),
                 contentDescription = "专辑封面",
                 modifier = Modifier.size(size),
                 contentScale = ContentScale.Crop,
