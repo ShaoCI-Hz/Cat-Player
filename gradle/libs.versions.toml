@@ -17,6 +17,7 @@ glance = "1.1.1"
 smbj = "0.13.0"
 jmDNS = "3.6.3"
 accompanist = "0.36.0"
+jaudiotagger = "3.0.1"
 
 [libraries]
 # Compose
@@ -77,6 +78,9 @@ smbj = { group = "com.hierynomus", name = "smbj", version.ref = "smbj" }
 
 # mDNS
 jmdns = { group = "org.jmdns", name = "jmdns", version.ref = "jmDNS" }
+
+# Audio Tagging
+jaudiotagger = { group = "net.jthink", name = "jaudiotagger", version.ref = "jaudiotagger" }
 
 # Accompanist
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }

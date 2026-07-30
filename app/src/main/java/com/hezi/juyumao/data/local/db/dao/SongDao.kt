@@ -25,6 +25,12 @@ interface SongDao {
     @Query("SELECT SUM(fileSize) FROM songs")
     fun getTotalSize(): Flow<Long?>
 
+    @Query("SELECT COUNT(DISTINCT album) FROM songs")
+    fun getAlbumCount(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT artist) FROM songs WHERE artist != '未知艺术家'")
+    fun getArtistCount(): Flow<Int>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(song: SongEntity)
 

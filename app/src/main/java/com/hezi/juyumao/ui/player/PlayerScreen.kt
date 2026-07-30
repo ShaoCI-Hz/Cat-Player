@@ -16,18 +16,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.hezi.juyumao.ui.components.AnimatedIconButton
 import com.hezi.juyumao.ui.components.RotatingAlbumArt
 
 @Composable
 fun PlayerScreen(
     onBack: () -> Unit,
+    viewModel: PlayerViewModel = hiltViewModel(),
 ) {
-    var isPlaying by remember { mutableStateOf(false) }
+    val currentSong by viewModel.currentSong.collectAsState()
+    val artworkUri by viewModel.artworkUri.collectAsState()
+    val isPlaying by viewModel.isPlaying.collectAsState()
     var shuffleEnabled by remember { mutableStateOf(false) }
     var repeatMode by remember { mutableIntStateOf(0) }
 
-    // 最简单的布局：一个 Box 撑满，Column 置底放控件，中间用 Spacer 自动填充
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -36,7 +39,7 @@ fun PlayerScreen(
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // 顶栏 - 固定高度
+        // 顶栏
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -51,21 +54,25 @@ fun PlayerScreen(
             Spacer(Modifier.size(48.dp))
         }
 
-        // 专辑区 - 固定 280dp，不参与弹性布局
+        // 专辑封面（真实封面）
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(280.dp),
             contentAlignment = Alignment.Center,
         ) {
-            RotatingAlbumArt(isPlaying = isPlaying, size = 220.dp)
+            RotatingAlbumArt(
+                isPlaying = isPlaying,
+                size = 220.dp,
+                artworkUri = artworkUri,
+            )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // 歌曲信息 - 固定
+        // 歌曲信息（真实数据）
         Text(
-            text = "未知歌曲",
+            text = currentSong?.title ?: "未知歌曲",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
@@ -73,14 +80,23 @@ fun PlayerScreen(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "未知艺术家",
+            text = currentSong?.artist ?: "未知艺术家",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        if (currentSong?.album != null && currentSong?.album != "未知专辑") {
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = currentSong!!.album,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
-        // 弹性间距 - 填充剩余空间，把下方控件推到底部
         Spacer(modifier = Modifier.weight(1f))
 
         // 进度条
@@ -99,7 +115,11 @@ fun PlayerScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text("0:00", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("0:00", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = formatDuration(currentSong?.duration ?: 0L),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -118,7 +138,7 @@ fun PlayerScreen(
             AnimatedIconButton(onClick = {}) {
                 Icon(Icons.Default.SkipPrevious, "上一首", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(32.dp))
             }
-            AnimatedIconButton(onClick = { isPlaying = !isPlaying }) {
+            AnimatedIconButton(onClick = { viewModel.togglePlay() }) {
                 Box(
                     modifier = Modifier
                         .size(72.dp)
@@ -152,4 +172,12 @@ fun PlayerScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
     }
+}
+
+private fun formatDuration(ms: Long): String {
+    if (ms <= 0) return "0:00"
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%d:%02d".format(minutes, seconds)
 }

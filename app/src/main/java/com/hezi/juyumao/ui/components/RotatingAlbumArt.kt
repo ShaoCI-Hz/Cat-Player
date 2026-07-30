@@ -15,14 +15,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 
 @Composable
 fun RotatingAlbumArt(
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
     size: Dp = 240.dp,
+    artworkUri: String? = null,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "album_rotation")
 
@@ -42,10 +45,7 @@ fun RotatingAlbumArt(
             .graphicsLayer {
                 rotationZ = if (isPlaying) rotation else 0f
             }
-            .shadow(
-                elevation = 20.dp,
-                shape = CircleShape,
-            )
+            .shadow(elevation = 20.dp, shape = CircleShape)
             .background(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = CircleShape,
@@ -53,11 +53,20 @@ fun RotatingAlbumArt(
             .clip(CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = Icons.Default.MusicNote,
-            contentDescription = "专辑封面",
-            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-            modifier = Modifier.size(size * 0.4f),
-        )
+        if (artworkUri != null) {
+            AsyncImage(
+                model = artworkUri,
+                contentDescription = "专辑封面",
+                modifier = Modifier.size(size),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.MusicNote,
+                contentDescription = "专辑封面",
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                modifier = Modifier.size(size * 0.4f),
+            )
+        }
     }
 }

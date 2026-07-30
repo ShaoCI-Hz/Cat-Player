@@ -26,6 +26,10 @@ class MusicRepository @Inject constructor(
 
     fun getTotalSize() = songDao.getTotalSize()
 
+    fun getAlbumCount() = songDao.getAlbumCount()
+
+    fun getArtistCount() = songDao.getArtistCount()
+
     suspend fun scanSmbDirectory(smbClient: SmbClientWrapper, path: String, serverId: Long): Result<Int> {
         val result = smbScanner.scanDirectory(smbClient, path, serverId)
         return result.map { songs ->

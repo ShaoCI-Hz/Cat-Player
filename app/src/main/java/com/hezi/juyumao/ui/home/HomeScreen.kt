@@ -83,14 +83,14 @@ fun HomeScreen(
                 )
                 StatCard(
                     icon = Icons.Default.Album,
-                    value = "0",
+                    value = "${uiState.albumCount}",
                     label = "专辑",
                     modifier = Modifier.weight(1f),
                 )
                 StatCard(
-                    icon = Icons.Default.PlayArrow,
-                    value = "${uiState.playCount}",
-                    label = "播放",
+                    icon = Icons.Default.Person,
+                    value = "${uiState.artistCount}",
+                    label = "艺术家",
                     modifier = Modifier.weight(1f),
                 )
                 StatCard(

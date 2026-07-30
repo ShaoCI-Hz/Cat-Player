@@ -6,12 +6,14 @@ import com.hezi.juyumao.data.repository.MusicRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class HomeUiState(
     val songCount: Int = 0,
     val albumCount: Int = 0,
+    val artistCount: Int = 0,
     val playCount: Long = 0,
     val totalSize: Long = 0L,
     val isSmbConnected: Boolean = false,
@@ -28,15 +30,21 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState
 
     init {
+        // 收集统计数据
         viewModelScope.launch {
-            musicRepository.getSongCount().collect { count ->
-                _uiState.value = _uiState.value.copy(songCount = count)
-            }
-        }
-        viewModelScope.launch {
-            musicRepository.getTotalSize().collect { size ->
-                _uiState.value = _uiState.value.copy(totalSize = size ?: 0L)
-            }
+            combine(
+                musicRepository.getSongCount(),
+                musicRepository.getTotalSize(),
+                musicRepository.getAlbumCount(),
+                musicRepository.getArtistCount(),
+            ) { count, size, albums, artists ->
+                _uiState.value.copy(
+                    songCount = count,
+                    totalSize = size ?: 0L,
+                    albumCount = albums,
+                    artistCount = artists,
+                )
+            }.collect { _uiState.value = it }
         }
     }
 

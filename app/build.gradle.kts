@@ -111,6 +111,9 @@ dependencies {
     // SMB
     implementation(libs.smbj)
 
+    // Audio Tagging (metadata extraction)
+    implementation(libs.jaudiotagger)
+
     // mDNS
     implementation(libs.jmdns)
 
