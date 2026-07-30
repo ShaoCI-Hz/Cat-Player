@@ -30,7 +30,9 @@ fun JuYuMaoApp(
 }
 
 @Composable
-private fun JuYuMaoAppContent() {
+private fun JuYuMaoAppContent(
+    appViewModel: AppViewModel = hiltViewModel(),
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -41,6 +43,11 @@ private fun JuYuMaoAppContent() {
         Screen.Search.route,
         Screen.Settings.route,
     )
+
+    // 从全局状态获取当前播放信息
+    val currentSong by appViewModel.currentSong.collectAsState()
+    val artworkUri by appViewModel.artworkUri.collectAsState()
+    val isPlaying by appViewModel.isPlaying.collectAsState()
 
     Scaffold(
         bottomBar = {
@@ -57,7 +64,14 @@ private fun JuYuMaoAppContent() {
             ) {
                 androidx.compose.foundation.layout.Column {
                     MiniPlayerBar(
-                        onPlayerClick = { navController.navigate(Screen.Player.createRoute(0)) },
+                        onPlayerClick = {
+                            val songId = currentSong?.id ?: 0L
+                            navController.navigate(Screen.Player.createRoute(songId))
+                        },
+                        songTitle = currentSong?.title,
+                        songArtist = currentSong?.artist,
+                        artworkUri = artworkUri,
+                        isPlaying = isPlaying,
                     )
                     PremiumBottomNavBar(
                         items = bottomNavItems,

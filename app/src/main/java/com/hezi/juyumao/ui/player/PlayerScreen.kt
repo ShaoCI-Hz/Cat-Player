@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.hezi.juyumao.ui.components.AnimatedIconButton
 import com.hezi.juyumao.ui.components.RotatingAlbumArt
+import com.hezi.juyumao.ui.lyrics.LyricsView
 
 @Composable
 fun PlayerScreen(
@@ -27,9 +28,11 @@ fun PlayerScreen(
 ) {
     val currentSong by viewModel.currentSong.collectAsState()
     val artworkUri by viewModel.artworkUri.collectAsState()
+    val lyrics by viewModel.lyrics.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
     var shuffleEnabled by remember { mutableStateOf(false) }
     var repeatMode by remember { mutableIntStateOf(0) }
+    var showLyrics by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -51,26 +54,45 @@ fun PlayerScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回", tint = MaterialTheme.colorScheme.onBackground)
             }
             Text("正在播放", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-            Spacer(Modifier.size(48.dp))
+            IconButton(onClick = { showLyrics = !showLyrics }, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    Icons.Default.Lyrics, "歌词",
+                    tint = if (showLyrics) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
+                )
+            }
         }
 
-        // 专辑封面（真实封面）
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(280.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            RotatingAlbumArt(
-                isPlaying = isPlaying,
-                size = 220.dp,
-                artworkUri = artworkUri,
-            )
+        // 专辑封面 或 歌词
+        if (showLyrics) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) {
+                LyricsView(
+                    lyricsData = lyrics,
+                    currentPositionMs = 0L,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(280.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                RotatingAlbumArt(
+                    isPlaying = isPlaying,
+                    size = 220.dp,
+                    artworkUri = artworkUri,
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // 歌曲信息（真实数据）
+        // 歌曲信息
         Text(
             text = currentSong?.title ?: "未知歌曲",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
@@ -86,7 +108,7 @@ fun PlayerScreen(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (currentSong?.album != null && currentSong?.album != "未知专辑") {
+        if (!currentSong?.album.isNullOrEmpty() && currentSong?.album != "未知专辑") {
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = currentSong!!.album,
@@ -97,87 +119,84 @@ fun PlayerScreen(
             )
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        // 歌词模式时不显示下方控件
+        if (!showLyrics) {
+            Spacer(modifier = Modifier.weight(1f))
 
-        // 进度条
-        Slider(
-            value = 0f,
-            onValueChange = {},
-            modifier = Modifier.fillMaxWidth(),
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-            ),
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text("0:00", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(
-                text = formatDuration(currentSong?.duration ?: 0L),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // 进度条
+            Slider(
+                value = 0f,
+                onValueChange = {},
+                modifier = Modifier.fillMaxWidth(),
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                ),
             )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 控制按钮
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AnimatedIconButton(onClick = { shuffleEnabled = !shuffleEnabled }) {
-                Icon(Icons.Default.Shuffle, "随机",
-                    tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("0:00", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(formatDuration(currentSong?.duration ?: 0L), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            AnimatedIconButton(onClick = {}) {
-                Icon(Icons.Default.SkipPrevious, "上一首", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(32.dp))
-            }
-            AnimatedIconButton(onClick = { viewModel.togglePlay() }) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(
-                            brush = Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(0.8f))),
-                            shape = CircleShape,
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 控制按钮
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AnimatedIconButton(onClick = { shuffleEnabled = !shuffleEnabled }) {
+                    Icon(Icons.Default.Shuffle, "随机",
+                        tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp))
+                }
+                AnimatedIconButton(onClick = {}) {
+                    Icon(Icons.Default.SkipPrevious, "上一首", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(32.dp))
+                }
+                AnimatedIconButton(onClick = { viewModel.togglePlay() }) {
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .background(
+                                brush = Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(0.8f))),
+                                shape = CircleShape,
+                            )
+                            .clip(CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isPlaying) "暂停" else "播放",
+                            tint = Color.Black,
+                            modifier = Modifier.size(40.dp),
                         )
-                        .clip(CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
+                    }
+                }
+                AnimatedIconButton(onClick = {}) {
+                    Icon(Icons.Default.SkipNext, "下一首", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(32.dp))
+                }
+                AnimatedIconButton(onClick = { repeatMode = (repeatMode + 1) % 3 }) {
                     Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "暂停" else "播放",
-                        tint = Color.Black,
-                        modifier = Modifier.size(40.dp),
+                        imageVector = if (repeatMode == 2) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                        contentDescription = "循环",
+                        tint = if (repeatMode > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
             }
-            AnimatedIconButton(onClick = {}) {
-                Icon(Icons.Default.SkipNext, "下一首", tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(32.dp))
-            }
-            AnimatedIconButton(onClick = { repeatMode = (repeatMode + 1) % 3 }) {
-                Icon(
-                    imageVector = if (repeatMode == 2) Icons.Default.RepeatOne else Icons.Default.Repeat,
-                    contentDescription = "循环",
-                    tint = if (repeatMode > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+        }
     }
 }
 
 private fun formatDuration(ms: Long): String {
     if (ms <= 0) return "0:00"
     val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "%d:%02d".format(minutes, seconds)
+    return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
 }

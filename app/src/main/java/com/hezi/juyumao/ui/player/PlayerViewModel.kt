@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.hezi.juyumao.data.local.db.dao.SongDao
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 import com.hezi.juyumao.data.repository.MetadataRepository
+import com.hezi.juyumao.player.PlaybackStateHolder
 import com.hezi.juyumao.player.audio.LyricsData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ class PlayerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val songDao: SongDao,
     private val metadataRepository: MetadataRepository,
+    private val playbackStateHolder: PlaybackStateHolder,
 ) : ViewModel() {
 
     private val _currentSong = MutableStateFlow<SongEntity?>(null)
@@ -33,7 +35,6 @@ class PlayerViewModel @Inject constructor(
     val isPlaying: StateFlow<Boolean> = _isPlaying
 
     init {
-        // 从导航参数获取 songId 并加载歌曲
         val songId = savedStateHandle.get<Long>("songId")
         if (songId != null && songId > 0) {
             loadSong(songId)
@@ -45,16 +46,19 @@ class PlayerViewModel @Inject constructor(
             val song = songDao.getById(songId)
             if (song != null) {
                 _currentSong.value = song
+                playbackStateHolder.updateSong(song)
 
                 // 加载封面
                 val artPath = metadataRepository.getCachedArtworkPath(song.id)
                 _artworkUri.value = artPath
+                playbackStateHolder.updateArtwork(artPath)
 
                 // 如果没有缓存封面，尝试提取
                 if (artPath == null && song.source == "LOCAL") {
                     try {
                         val newPath = metadataRepository.extractAndCacheArtwork(song)
                         _artworkUri.value = newPath
+                        playbackStateHolder.updateArtwork(newPath)
                     } catch (_: Exception) {}
                 }
 
@@ -68,5 +72,6 @@ class PlayerViewModel @Inject constructor(
 
     fun togglePlay() {
         _isPlaying.value = !_isPlaying.value
+        playbackStateHolder.updatePlaying(_isPlaying.value)
     }
 }
