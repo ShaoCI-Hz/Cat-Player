@@ -3,6 +3,7 @@ package com.hezi.juyumao.ui.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.*
@@ -13,11 +14,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateToSmb: () -> Unit,
     onNavigateToEqualizer: () -> Unit,
 ) {
+    var themeMode by remember { mutableStateOf("深色") }
+    var showThemeDialog by remember { mutableStateOf(false) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp),
@@ -38,12 +43,11 @@ fun SettingsScreen(
         // Theme section
         item {
             SettingsSection(title = "外观") {
-                var themeMode by remember { mutableStateOf("深色") }
                 SettingsItem(
                     icon = Icons.Default.DarkMode,
                     title = "主题模式",
                     subtitle = themeMode,
-                    onClick = { },
+                    onClick = { showThemeDialog = true },
                 )
             }
         }
@@ -107,6 +111,45 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    // Theme selector dialog
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("主题模式") },
+            text = {
+                Column {
+                    listOf("深色", "浅色", "跟随系统").forEach { mode ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    themeMode = mode
+                                    showThemeDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            RadioButton(
+                                selected = themeMode == mode,
+                                onClick = {
+                                    themeMode = mode
+                                    showThemeDialog = false
+                                },
+                            )
+                            Text(text = mode, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("取消")
+                }
+            },
+        )
     }
 }
 

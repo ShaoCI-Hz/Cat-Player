@@ -170,6 +170,71 @@ fun HomeScreen(
         item {
             Spacer(modifier = Modifier.height(24.dp))
 
+            // 每日一句
+            val quotes = remember {
+                listOf(
+                    "音乐是灵魂的语言，它能说出语言无法表达的东西。" to "贝多芬",
+                    "没有音乐，生命是一个错误。" to "尼采",
+                    "音乐是比一切智慧、一切哲学更高的启示。" to "贝多芬",
+                    "当我听到音乐时，我便忘记了自己。" to "玛丽莲·梦露",
+                    "音乐是思维着的声音。" to "雨果",
+                    "最好的音乐是在你最需要的时候听到的。" to "拉尔夫·瓦尔多·爱默生",
+                    "音乐是人类的通用语言。" to "亨利·沃兹沃斯·朗费罗",
+                    "音乐是生活中最美好的一面。" to "丘吉尔",
+                    "没有音乐的世界是不完整的。" to "莫扎特",
+                    "音乐能抚慰野蛮的胸膛，能软化坚硬的石头。" to "威廉·莎士比亚",
+                )
+            }
+            val todayIndex = remember { (System.currentTimeMillis() / 86400000 % quotes.size).toInt() }
+            val (quote, author) = quotes[todayIndex]
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                ),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FormatQuote,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            text = "每日一句",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Text(
+                        text = quote,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "—— $author",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.End),
+                    )
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
+
             // Recent played
             Text(
                 text = "最近播放",

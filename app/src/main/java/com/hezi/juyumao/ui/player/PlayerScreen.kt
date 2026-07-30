@@ -32,8 +32,14 @@ fun PlayerScreen(
 ) {
     var isPlaying by remember { mutableStateOf(false) }
     var shuffleEnabled by remember { mutableStateOf(false) }
-    var repeatMode by remember { mutableIntStateOf(0) } // 0=off, 1=all, 2=one
+    var repeatMode by remember { mutableIntStateOf(0) }
     var showLyrics by remember { mutableStateOf(false) }
+
+    val albumScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1.0f else 0.95f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
+        label = "album_scale",
+    )
 
     Box(
         modifier = Modifier
@@ -95,7 +101,7 @@ fun PlayerScreen(
             // Album art or Lyrics
             if (showLyrics) {
                 LyricsView(
-                    lyricsData = null, // TODO: connect to actual lyrics
+                    lyricsData = null,
                     currentPositionMs = 0L,
                     modifier = Modifier.weight(1f),
                 )
@@ -108,10 +114,20 @@ fun PlayerScreen(
                         color = MaterialTheme.colorScheme.primary,
                         size = 300.dp,
                     )
-                    RotatingAlbumArt(
-                        isPlaying = isPlaying,
-                        size = 240.dp,
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(240.dp)
+                            .graphicsLayer {
+                                scaleX = albumScale
+                                scaleY = albumScale
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        RotatingAlbumArt(
+                            isPlaying = isPlaying,
+                            size = 240.dp,
+                        )
+                    }
                 }
             }
 
@@ -176,7 +192,6 @@ fun PlayerScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Shuffle
                 AnimatedIconButton(onClick = { shuffleEnabled = !shuffleEnabled }) {
                     Icon(
                         imageVector = Icons.Default.Shuffle,
@@ -187,7 +202,6 @@ fun PlayerScreen(
                     )
                 }
 
-                // Previous
                 AnimatedIconButton(onClick = { }) {
                     Icon(
                         imageVector = Icons.Default.SkipPrevious,
@@ -197,7 +211,6 @@ fun PlayerScreen(
                     )
                 }
 
-                // Play/Pause
                 AnimatedIconButton(
                     onClick = { isPlaying = !isPlaying },
                 ) {
@@ -226,7 +239,6 @@ fun PlayerScreen(
                     }
                 }
 
-                // Next
                 AnimatedIconButton(onClick = { }) {
                     Icon(
                         imageVector = Icons.Default.SkipNext,
@@ -236,7 +248,6 @@ fun PlayerScreen(
                     )
                 }
 
-                // Repeat
                 AnimatedIconButton(onClick = { repeatMode = (repeatMode + 1) % 3 }) {
                     Icon(
                         imageVector = if (repeatMode == 2) Icons.Default.RepeatOne
