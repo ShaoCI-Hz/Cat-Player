@@ -1,6 +1,5 @@
 package com.hezi.juyumao.ui.components
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -22,8 +21,8 @@ fun AnimatedIconButton(
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.85f else 1.0f,
         animationSpec = spring(
-            dampingRatio = 0.35f,
-            stiffness = 500f,
+            dampingRatio = 0.6f,
+            stiffness = 800f,
         ),
         label = "button_scale",
     )

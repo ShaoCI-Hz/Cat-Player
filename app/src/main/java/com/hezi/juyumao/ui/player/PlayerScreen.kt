@@ -4,8 +4,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -47,6 +48,7 @@ fun PlayerScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -89,91 +91,84 @@ fun PlayerScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Album art - fixed size container, no weight
+            // Album art
             if (showLyrics) {
                 LyricsView(
                     lyricsData = null,
                     currentPositionMs = 0L,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp),
+                        .height(280.dp),
                 )
             } else {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp),
+                        .height(280.dp),
                 ) {
                     PulsingGlow(
                         color = MaterialTheme.colorScheme.primary,
-                        size = 280.dp,
+                        size = 260.dp,
                     )
                     RotatingAlbumArt(
                         isPlaying = isPlaying,
-                        size = 240.dp,
+                        size = 220.dp,
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Song info
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = "未知歌曲",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "未知艺术家",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Song info
+            Text(
+                text = "未知歌曲",
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "未知艺术家",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             // Progress bar
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Slider(
-                    value = 0f,
-                    onValueChange = { },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                    ),
+            Slider(
+                value = 0f,
+                onValueChange = { },
+                modifier = Modifier.fillMaxWidth(),
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                ),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "0:00",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = "0:00",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = "0:00",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(
+                    text = "0:00",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Controls
             Row(
