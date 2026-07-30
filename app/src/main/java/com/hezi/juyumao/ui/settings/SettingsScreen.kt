@@ -13,15 +13,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.hezi.juyumao.ui.theme.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateToSmb: () -> Unit,
     onNavigateToEqualizer: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-    var themeMode by remember { mutableStateOf("深色") }
+    val themeMode by viewModel.themeMode.collectAsState()
     var showThemeDialog by remember { mutableStateOf(false) }
+
+    val themeLabel = when (themeMode) {
+        ThemeMode.DARK -> "深色"
+        ThemeMode.LIGHT -> "浅色"
+        ThemeMode.SYSTEM -> "跟随系统"
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -46,7 +55,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.DarkMode,
                     title = "主题模式",
-                    subtitle = themeMode,
+                    subtitle = themeLabel,
                     onClick = { showThemeDialog = true },
                 )
             }
@@ -120,12 +129,16 @@ fun SettingsScreen(
             title = { Text("主题模式") },
             text = {
                 Column {
-                    listOf("深色", "浅色", "跟随系统").forEach { mode ->
+                    listOf(
+                        ThemeMode.DARK to "深色",
+                        ThemeMode.LIGHT to "浅色",
+                        ThemeMode.SYSTEM to "跟随系统",
+                    ).forEach { (mode, label) ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    themeMode = mode
+                                    viewModel.setThemeMode(mode)
                                     showThemeDialog = false
                                 }
                                 .padding(vertical = 12.dp),
@@ -135,11 +148,11 @@ fun SettingsScreen(
                             RadioButton(
                                 selected = themeMode == mode,
                                 onClick = {
-                                    themeMode = mode
+                                    viewModel.setThemeMode(mode)
                                     showThemeDialog = false
                                 },
                             )
-                            Text(text = mode, style = MaterialTheme.typography.bodyLarge)
+                            Text(text = label, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-package com.hezi.juyumao.ui.settings
+package com.hezi.juyumao.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,20 +8,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository,
+class AppViewModel @Inject constructor(
+    settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.DARK)
-
-    fun setThemeMode(mode: ThemeMode) {
-        viewModelScope.launch {
-            settingsRepository.setThemeMode(mode)
-        }
-    }
 }

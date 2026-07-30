@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.hezi.juyumao.ui.components.MiniPlayerBar
@@ -15,9 +16,21 @@ import com.hezi.juyumao.ui.components.PremiumBottomNavBar
 import com.hezi.juyumao.ui.navigation.JuYuMaoNavGraph
 import com.hezi.juyumao.ui.navigation.Screen
 import com.hezi.juyumao.ui.navigation.bottomNavItems
+import com.hezi.juyumao.ui.theme.JuYuMaoTheme
 
 @Composable
-fun JuYuMaoApp() {
+fun JuYuMaoApp(
+    appViewModel: AppViewModel = hiltViewModel(),
+) {
+    val themeMode by appViewModel.themeMode.collectAsState()
+
+    JuYuMaoTheme(themeMode = themeMode) {
+        JuYuMaoAppContent()
+    }
+}
+
+@Composable
+private fun JuYuMaoAppContent() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
