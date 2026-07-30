@@ -1,6 +1,6 @@
 package com.hezi.juyumao.di
 
-import com.hezi.juyumao.data.remote.smb.SmbClient
+import com.hezi.juyumao.data.remote.smb.SmbClientWrapper
 import com.hezi.juyumao.data.remote.smb.SmbConnectionPool
 import dagger.Module
 import dagger.Provides
@@ -14,13 +14,13 @@ object SmbModule {
 
     @Provides
     @Singleton
-    fun provideSmbClient(): SmbClient {
-        return SmbClient()
+    fun provideSmbClient(): SmbClientWrapper {
+        return SmbClientWrapper()
     }
 
     @Provides
     @Singleton
-    fun provideSmbConnectionPool(smbClient: SmbClient): SmbConnectionPool {
+    fun provideSmbConnectionPool(smbClient: SmbClientWrapper): SmbConnectionPool {
         return SmbConnectionPool(smbClient)
     }
 }

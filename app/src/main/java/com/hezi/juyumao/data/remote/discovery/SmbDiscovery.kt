@@ -17,15 +17,15 @@ data class DiscoveredServer(
 class SmbDiscovery {
 
     private var jmdns: JmDNS? = null
+    private var listener: ServiceListener? = null
 
     suspend fun discover(timeoutMs: Long = 5000): Result<List<DiscoveredServer>> =
         withContext(Dispatchers.IO) {
             try {
                 val servers = mutableListOf<DiscoveredServer>()
-                val latch = java.util.concurrent.CountDownLatch(1)
 
                 jmdns = JmDNS.create(InetAddress.getLocalHost())
-                jmdns?.addServiceListener("_smb._tcp.local.", object : ServiceListener {
+                listener = object : ServiceListener {
                     override fun serviceAdded(event: ServiceEvent) {
                         jmdns?.requestServiceInfo(event.type, event.name, true)
                     }
@@ -42,26 +42,33 @@ class SmbDiscovery {
                             )
                         )
                     }
-                })
+                }
+                jmdns?.addServiceListener("_smb._tcp.local.", listener)
 
                 Thread.sleep(timeoutMs)
-                jmdns?.removeAllServiceListeners()
-                jmdns?.close()
-                jmdns = null
+                cleanup()
 
                 Result.success(servers)
             } catch (e: Exception) {
-                jmdns?.close()
-                jmdns = null
+                cleanup()
                 Result.failure(e)
             }
         }
 
     fun stop() {
+        cleanup()
+    }
+
+    private fun cleanup() {
         try {
-            jmdns?.removeAllServiceListeners()
-            jmdns?.close()
+            val l = listener
+            val j = jmdns
+            if (l != null && j != null) {
+                j.removeServiceListener("_smb._tcp.local.", l)
+            }
+            j?.close()
         } catch (_: Exception) {}
+        listener = null
         jmdns = null
     }
 }

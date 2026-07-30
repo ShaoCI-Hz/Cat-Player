@@ -12,7 +12,7 @@ class SmbFileScanner {
     )
 
     suspend fun scanDirectory(
-        smbClient: SmbClient,
+        smbClient: SmbClientWrapper,
         path: String,
         serverId: Long,
     ): Result<List<SongEntity>> = withContext(Dispatchers.IO) {
@@ -26,7 +26,7 @@ class SmbFileScanner {
     }
 
     private suspend fun scanRecursive(
-        smbClient: SmbClient,
+        smbClient: SmbClientWrapper,
         path: String,
         serverId: Long,
         result: MutableList<SongEntity>,

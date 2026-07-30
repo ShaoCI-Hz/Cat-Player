@@ -2,7 +2,7 @@ package com.hezi.juyumao.data.repository
 
 import com.hezi.juyumao.data.local.db.dao.SongDao
 import com.hezi.juyumao.data.local.db.entity.SongEntity
-import com.hezi.juyumao.data.remote.smb.SmbClient
+import com.hezi.juyumao.data.remote.smb.SmbClientWrapper
 import com.hezi.juyumao.data.remote.smb.SmbFileScanner
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -24,7 +24,7 @@ class MusicRepository @Inject constructor(
 
     fun getTotalSize() = songDao.getTotalSize()
 
-    suspend fun scanSmbDirectory(smbClient: SmbClient, path: String, serverId: Long): Result<Int> {
+    suspend fun scanSmbDirectory(smbClient: SmbClientWrapper, path: String, serverId: Long): Result<Int> {
         val result = scanner.scanDirectory(smbClient, path, serverId)
         return result.map { songs ->
             songDao.insertAll(songs)

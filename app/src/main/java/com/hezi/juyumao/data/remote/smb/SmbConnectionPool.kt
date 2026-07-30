@@ -7,13 +7,13 @@ import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 data class PooledConnection(
-    val client: SmbClient,
+    val client: SmbClientWrapper,
     val serverId: Long,
     val lastAccessed: Long = System.currentTimeMillis(),
 )
 
 class SmbConnectionPool @Inject constructor(
-    private val smbClient: SmbClient,
+    private val smbClient: SmbClientWrapper,
 ) {
     private val maxConnections = 3
     private val idleTimeoutMs = 60_000L
@@ -39,7 +39,7 @@ class SmbConnectionPool @Inject constructor(
         username: String,
         password: String,
         shareName: String,
-    ): SmbClient {
+    ): SmbClientWrapper {
         connections[serverId]?.let { pooled ->
             if (pooled.client.isConnected()) {
                 connections[serverId] = pooled.copy(lastAccessed = System.currentTimeMillis())

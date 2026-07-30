@@ -142,7 +142,7 @@ private fun BottomNavItemView(
                         .width(56.dp)
                         .height(3.dp)
                         .background(
-                            brush = Brush.horizontal(
+                            brush = Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.Transparent,
                                     MaterialTheme.colorScheme.primary,

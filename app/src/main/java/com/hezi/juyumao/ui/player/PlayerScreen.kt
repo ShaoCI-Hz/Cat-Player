@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.hezi.juyumao.ui.components.AnimatedIconButton
 import com.hezi.juyumao.ui.components.PulsingGlow
 import com.hezi.juyumao.ui.components.RotatingAlbumArt
+import com.hezi.juyumao.ui.lyrics.LyricsView
 
 @Composable
 fun PlayerScreen(
@@ -32,6 +33,7 @@ fun PlayerScreen(
     var isPlaying by remember { mutableStateOf(false) }
     var shuffleEnabled by remember { mutableStateOf(false) }
     var repeatMode by remember { mutableIntStateOf(0) } // 0=off, 1=all, 2=one
+    var showLyrics by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -69,32 +71,49 @@ fun PlayerScreen(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                IconButton(onClick = { }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "更多",
-                        tint = MaterialTheme.colorScheme.onBackground,
-                    )
+                Row {
+                    IconButton(onClick = { showLyrics = !showLyrics }) {
+                        Icon(
+                            imageVector = Icons.Default.Lyrics,
+                            contentDescription = "歌词",
+                            tint = if (showLyrics) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                    IconButton(onClick = { }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "更多",
+                            tint = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.weight(0.3f))
 
-            // Album art with glow
-            Box(
-                contentAlignment = Alignment.Center,
-            ) {
-                PulsingGlow(
-                    color = MaterialTheme.colorScheme.primary,
-                    size = 300.dp,
+            // Album art or Lyrics
+            if (showLyrics) {
+                LyricsView(
+                    lyricsData = null, // TODO: connect to actual lyrics
+                    currentPositionMs = 0L,
+                    modifier = Modifier.weight(1f),
                 )
-                RotatingAlbumArt(
-                    isPlaying = isPlaying,
-                    size = 240.dp,
-                )
+            } else {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    PulsingGlow(
+                        color = MaterialTheme.colorScheme.primary,
+                        size = 300.dp,
+                    )
+                    RotatingAlbumArt(
+                        isPlaying = isPlaying,
+                        size = 240.dp,
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.weight(0.3f))
 
             // Song info
             Column(

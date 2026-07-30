@@ -1,5 +1,6 @@
 package com.hezi.juyumao.data.remote.smb
 
+import android.net.Uri
 import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSpec
 import kotlinx.coroutines.Dispatchers
@@ -7,7 +8,7 @@ import kotlinx.coroutines.runBlocking
 import java.io.InputStream
 
 class SmbStreamSource(
-    private val smbClient: SmbClient,
+    private val smbClient: SmbClientWrapper,
     private val filePath: String,
 ) : BaseDataSource(/* isNetwork= */ true) {
 
@@ -21,7 +22,7 @@ class SmbStreamSource(
         inputStream = result.getOrNull()
             ?: throw Exception("无法打开文件: $filePath")
 
-        bytesRemaining = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
+        bytesRemaining = if (dataSpec.length >= 0) {
             dataSpec.length
         } else {
             Long.MAX_VALUE
@@ -52,4 +53,6 @@ class SmbStreamSource(
         } catch (_: Exception) {}
         inputStream = null
     }
+
+    override fun getUri(): Uri? = null
 }

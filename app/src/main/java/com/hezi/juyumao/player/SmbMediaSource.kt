@@ -5,21 +5,20 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
-import com.hezi.juyumao.data.remote.smb.SmbClient
+import com.hezi.juyumao.data.remote.smb.SmbClientWrapper
 import com.hezi.juyumao.data.remote.smb.SmbStreamSource
 
 class SmbDataSourceFactory(
-    private val smbClient: SmbClient,
+    private val smbClient: SmbClientWrapper,
 ) : DataSource.Factory {
 
     override fun createDataSource(): DataSource {
-        // The actual file path will be set via the MediaItem's custom tag
         return SmbStreamSource(smbClient, "")
     }
 }
 
 fun createSmbMediaSource(
-    smbClient: SmbClient,
+    smbClient: SmbClientWrapper,
     filePath: String,
     mimeType: String,
 ): MediaSource {

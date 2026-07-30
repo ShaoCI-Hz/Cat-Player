@@ -4,10 +4,9 @@ import com.hezi.juyumao.data.local.db.dao.ServerDao
 import com.hezi.juyumao.data.local.db.entity.ServerEntity
 import com.hezi.juyumao.data.remote.discovery.DiscoveredServer
 import com.hezi.juyumao.data.remote.discovery.SmbDiscovery
-import com.hezi.juyumao.data.remote.smb.SmbClient
+import com.hezi.juyumao.data.remote.smb.SmbClientWrapper
 import com.hezi.juyumao.data.remote.smb.SmbConnectionPool
 import com.hezi.juyumao.data.remote.smb.SmbConnectionState
-import com.hezi.juyumao.data.remote.smb.SmbFileInfo
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -61,11 +60,5 @@ class SmbRepository @Inject constructor(
 
     suspend fun discoverServers(): Result<List<DiscoveredServer>> {
         return discovery.discover()
-    }
-
-    fun getSmbClient(): SmbClient {
-        // Return the shared client from pool
-        // In practice, this should be accessed through the pool
-        throw NotImplementedError("Use connectionPool.getConnection() instead")
     }
 }

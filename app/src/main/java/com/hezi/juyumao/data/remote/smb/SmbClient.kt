@@ -1,5 +1,6 @@
 package com.hezi.juyumao.data.remote.smb
 
+import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.fileinformation.FileIdBothDirectoryInformation
 import com.hierynomus.smbj.SMBClient
 import com.hierynomus.smbj.auth.AuthenticationContext
@@ -9,6 +10,7 @@ import com.hierynomus.smbj.share.DiskShare
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.InputStream
+import java.util.EnumSet
 import javax.inject.Inject
 
 data class SmbFileInfo(
@@ -19,7 +21,7 @@ data class SmbFileInfo(
     val lastModified: Long,
 )
 
-class SmbClient @Inject constructor() {
+class SmbClientWrapper @Inject constructor() {
 
     private var client: SMBClient? = null
     private var connection: Connection? = null
@@ -73,12 +75,17 @@ class SmbClient @Inject constructor() {
     suspend fun openFile(path: String): Result<InputStream> = withContext(Dispatchers.IO) {
         try {
             val currentShare = share ?: return@withContext Result.failure(IllegalStateException("未连接"))
+            val accessMask = EnumSet.of(AccessMask.FILE_READ_DATA)
+            val shareAccess = java.util.EnumSet.of(
+                com.hierynomus.mssmb2.SMB2ShareAccess.FILE_SHARE_READ
+            )
+            val createDisposition = com.hierynomus.mssmb2.SMB2CreateDisposition.FILE_OPEN
             val file = currentShare.openFile(
                 path,
-                setOf(com.hierynomus.msdtyp.AccessMask.FILE_READ_DATA),
+                accessMask,
                 null,
-                setOf(com.hierynomus.smb2.share.enums.SMB2ShareAccess.FILE_SHARE_READ),
-                com.hierynomus.smb2.create.SMB2CreateDisposition.FILE_OPEN,
+                shareAccess,
+                createDisposition,
                 null,
             )
             Result.success(file.inputStream)

@@ -46,15 +46,6 @@ fun BrowseScreen() {
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.primary,
             edgePadding = 16.dp,
-            indicator = { tabPositions ->
-                if (selectedTab.ordinal < tabPositions.size) {
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
-                        height = 3.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            },
         ) {
             BrowseTab.entries.forEach { tab ->
                 Tab(

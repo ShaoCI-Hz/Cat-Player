@@ -82,7 +82,7 @@ fun SettingsScreen(
                     onClick = { },
                 )
                 SettingsItem(
-                    icon = Icons.Default.Buffer,
+                    icon = Icons.Default.Memory,
                     title = "缓冲大小",
                     subtitle = "256 KB",
                     onClick = { },

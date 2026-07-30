@@ -1,22 +1,40 @@
 package com.hezi.juyumao.ui.equalizer
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun EqualizerScreen(
     onBack: () -> Unit,
+    viewModel: EqualizerViewModel = hiltViewModel(),
 ) {
-    var selectedPreset by remember { mutableStateOf("普通") }
-    val presets = listOf("普通", "摇滚", "流行", "古典", "爵士", "自定义")
+    val state by viewModel.state.collectAsState()
+    var selectedPresetIndex by remember { mutableIntStateOf(-1) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+    ) {
         Spacer(modifier = Modifier.height(48.dp))
 
         Row(
@@ -27,10 +45,7 @@ fun EqualizerScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回",
-                )
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
             }
             Text(
                 text = "均衡器",
@@ -39,36 +54,134 @@ fun EqualizerScreen(
             Spacer(modifier = Modifier.size(48.dp))
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Preset chips
-        Row(
+        // Enable toggle
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+            shape = RoundedCornerShape(14.dp),
         ) {
-            presets.forEach { preset ->
-                FilterChip(
-                    selected = selectedPreset == preset,
-                    onClick = { selectedPreset = preset },
-                    label = { Text(preset) },
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "均衡器",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Switch(
+                    checked = state.enabled,
+                    onCheckedChange = { viewModel.setEnabled(it) },
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        // Equalizer sliders placeholder
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
+        // Presets
+        if (state.presets.isNotEmpty()) {
             Text(
-                text = "均衡器功能开发中...",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "预设",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(state.presets) { preset ->
+                    FilterChip(
+                        selected = selectedPresetIndex == preset.index.toInt(),
+                        onClick = {
+                            selectedPresetIndex = preset.index.toInt()
+                            viewModel.usePreset(preset.index)
+                        },
+                        label = { Text(preset.name) },
+                    )
+                }
+                item {
+                    FilterChip(
+                        selected = selectedPresetIndex == -1,
+                        onClick = { selectedPresetIndex = -1 },
+                        label = { Text("自定义") },
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
         }
+
+        // Bands
+        if (state.bands.isNotEmpty()) {
+            Text(
+                text = "频段调节",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            state.bands.forEach { band ->
+                var sliderValue by remember(band.currentLevel) {
+                    mutableFloatStateOf(band.currentLevel.toFloat())
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = formatFrequency(band.centerFreq),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = "${sliderValue.toInt()} dB",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Slider(
+                        value = sliderValue,
+                        onValueChange = {
+                            sliderValue = it
+                            selectedPresetIndex = -1
+                        },
+                        onValueChangeFinished = {
+                            viewModel.setBandLevel(band.index, sliderValue.toInt().toShort())
+                        },
+                        valueRange = band.minLevel.toFloat()..band.maxLevel.toFloat(),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        ),
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
+}
+
+private fun formatFrequency(milliHz: Int): String {
+    val hz = milliHz / 1000
+    return if (hz >= 1000) "${hz / 1000} kHz" else "$hz Hz"
 }

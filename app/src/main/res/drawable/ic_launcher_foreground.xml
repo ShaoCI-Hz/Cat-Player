@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background circle -->
+    <path
+        android:fillColor="#1ED760"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+    <!-- Music note -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M42,36v24c0,3.3 -2.7,6 -6,6s-6,-2.7 -6,-6s2.7,-6 6,-6c1.1,0 2.1,0.3 3,0.8V36l18,-4v20c0,3.3 -2.7,6 -6,6s-6,-2.7 -6,-6s2.7,-6 6,-6c1.1,0 2.1,0.3 3,0.8V32L42,36z" />
+    <!-- Cat ears -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M38,28L32,18L44,24Z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M62,28L68,18L56,24Z" />
+</vector>
