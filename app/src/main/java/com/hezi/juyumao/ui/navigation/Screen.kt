@@ -16,7 +16,9 @@ sealed class Screen(val route: String) {
     data object Browse : Screen("browse")
     data object Search : Screen("search")
     data object Settings : Screen("settings")
-    data object Player : Screen("player")
+    data object Player : Screen("player/{songId}") {
+        fun createRoute(songId: Long) = "player/$songId"
+    }
     data object Queue : Screen("queue")
     data object SmbConnect : Screen("smb_connect")
     data object Equalizer : Screen("equalizer")

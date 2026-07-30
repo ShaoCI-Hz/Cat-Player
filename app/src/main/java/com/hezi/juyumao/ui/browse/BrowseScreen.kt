@@ -21,7 +21,7 @@ import com.hezi.juyumao.data.local.db.entity.SongEntity
 
 @Composable
 fun BrowseScreen(
-    onSongClick: (List<SongEntity>, Int) -> Unit = { _, _ -> },
+    onSongClick: (Long) -> Unit = {},
     viewModel: BrowseViewModel = hiltViewModel(),
 ) {
     val allSongs by viewModel.allSongs.collectAsState()
@@ -107,10 +107,7 @@ fun BrowseScreen(
                 ) { song ->
                     SongListItem(
                         song = song,
-                        onClick = {
-                            val index = filteredSongs.indexOf(song)
-                            onSongClick(filteredSongs, index)
-                        },
+                        onClick = { onSongClick(song.id) },
                     )
                 }
             }

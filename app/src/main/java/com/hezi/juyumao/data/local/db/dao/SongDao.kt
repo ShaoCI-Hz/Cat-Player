@@ -13,6 +13,9 @@ interface SongDao {
     @Query("SELECT * FROM songs ORDER BY addedAt DESC")
     fun getAllSongs(): Flow<List<SongEntity>>
 
+    @Query("SELECT * FROM songs WHERE id = :id")
+    suspend fun getById(id: Long): SongEntity?
+
     @Query("SELECT * FROM songs ORDER BY lastPlayedAt DESC LIMIT 20")
     fun getRecentlyPlayed(): Flow<List<SongEntity>>
 

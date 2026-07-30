@@ -57,7 +57,7 @@ private fun JuYuMaoAppContent() {
             ) {
                 androidx.compose.foundation.layout.Column {
                     MiniPlayerBar(
-                        onPlayerClick = { navController.navigate(Screen.Player.route) },
+                        onPlayerClick = { navController.navigate(Screen.Player.createRoute(0)) },
                     )
                     PremiumBottomNavBar(
                         items = bottomNavItems,
@@ -76,17 +76,13 @@ private fun JuYuMaoAppContent() {
             }
         },
     ) { paddingValues ->
-        // 播放页面自己处理 inset，不应用 Scaffold padding（避免底栏隐藏动画导致跳动）
-        val isPlayerPage = currentRoute == Screen.Player.route
+        val isPlayerPage = currentRoute?.startsWith("player/") == true
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .then(if (!isPlayerPage) Modifier.padding(paddingValues) else Modifier),
         ) {
-            JuYuMaoNavGraph(
-                navController = navController,
-                onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
-            )
+            JuYuMaoNavGraph(navController = navController)
         }
     }
 }

@@ -5,8 +5,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.hezi.juyumao.ui.equalizer.EqualizerScreen
 import com.hezi.juyumao.ui.home.HomeScreen
 import com.hezi.juyumao.ui.player.PlayerScreen
@@ -18,7 +20,6 @@ import com.hezi.juyumao.ui.smb.SmbConnectScreen
 @Composable
 fun JuYuMaoNavGraph(
     navController: NavHostController,
-    onNavigateToPlayer: () -> Unit,
 ) {
     NavHost(
         navController = navController,
@@ -46,7 +47,7 @@ fun JuYuMaoNavGraph(
     ) {
         composable(Screen.Home.route) {
             HomeScreen(
-                onNavigateToPlayer = onNavigateToPlayer,
+                onNavigateToPlayer = { navController.navigate(Screen.Player.createRoute(0)) },
                 onNavigateToSmb = { navController.navigate(Screen.SmbConnect.route) },
                 onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
                 onNavigateToQueue = { navController.navigate(Screen.Queue.route) },
@@ -54,8 +55,8 @@ fun JuYuMaoNavGraph(
         }
         composable(Screen.Browse.route) {
             com.hezi.juyumao.ui.browse.BrowseScreen(
-                onSongClick = { songs, index ->
-                    onNavigateToPlayer()
+                onSongClick = { songId ->
+                    navController.navigate(Screen.Player.createRoute(songId))
                 },
             )
         }
@@ -68,21 +69,14 @@ fun JuYuMaoNavGraph(
                 onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
             )
         }
-        // Player page: fast fade-only transition, no slide delay
+        // 播放器页面：接收 songId 参数
         composable(
             route = Screen.Player.route,
-            enterTransition = {
-                fadeIn(animationSpec = tween(200))
-            },
-            exitTransition = {
-                fadeOut(animationSpec = tween(150))
-            },
-            popEnterTransition = {
-                fadeIn(animationSpec = tween(200))
-            },
-            popExitTransition = {
-                fadeOut(animationSpec = tween(150))
-            },
+            arguments = listOf(navArgument("songId") { type = NavType.LongType }),
+            enterTransition = { fadeIn(animationSpec = tween(200)) },
+            exitTransition = { fadeOut(animationSpec = tween(150)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(200)) },
+            popExitTransition = { fadeOut(animationSpec = tween(150)) },
         ) {
             PlayerScreen(onBack = { navController.popBackStack() })
         }
