@@ -104,6 +104,9 @@ dependencies {
     // Coil
     implementation(libs.coil.compose)
 
+    // Palette (cover color extraction)
+    implementation(libs.palette)
+
     // Glance (Widget)
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
