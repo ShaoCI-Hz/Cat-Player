@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,14 +21,14 @@ fun PlayerScreen(
     onBack: () -> Unit,
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
-    val currentSong by viewModel.currentSong.collectAsState()
-    val artworkUri by viewModel.artworkUri.collectAsState()
-    val lyrics by viewModel.lyrics.collectAsState()
-    val isPlaying by viewModel.isPlaying.collectAsState()
-    val position by viewModel.position.collectAsState()
-    val duration by viewModel.duration.collectAsState()
-    val lyricsFontSize by viewModel.lyricsFontSize.collectAsState()
-    val lyricsFontBold by viewModel.lyricsFontBold.collectAsState()
+    val currentSong by viewModel.currentSong.collectAsStateWithLifecycle()
+    val artworkUri by viewModel.artworkUri.collectAsStateWithLifecycle()
+    val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val position by viewModel.position.collectAsStateWithLifecycle()
+    val duration by viewModel.duration.collectAsStateWithLifecycle()
+    val lyricsFontSize by viewModel.lyricsFontSize.collectAsStateWithLifecycle()
+    val lyricsFontBold by viewModel.lyricsFontBold.collectAsStateWithLifecycle()
 
     var isImmersive by remember { mutableStateOf(false) }
     var shuffleEnabled by remember { mutableStateOf(false) }

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hezi.juyumao.ui.theme.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,7 +24,7 @@ fun SettingsScreen(
     onNavigateToEqualizer: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-    val themeMode by viewModel.themeMode.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     var showThemeDialog by remember { mutableStateOf(false) }
 
     val themeLabel = when (themeMode) {
@@ -105,8 +106,8 @@ fun SettingsScreen(
 
         // Lyrics section
         item {
-            val lyricsFontSize by viewModel.lyricsFontSize.collectAsState()
-            val lyricsFontBold by viewModel.lyricsFontBold.collectAsState()
+            val lyricsFontSize by viewModel.lyricsFontSize.collectAsStateWithLifecycle()
+            val lyricsFontBold by viewModel.lyricsFontBold.collectAsStateWithLifecycle()
             SettingsSection(title = "歌词") {
                 SettingsItem(
                     icon = Icons.Default.Lyrics,

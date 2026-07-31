@@ -26,6 +26,9 @@ class SmbFileScanner @Inject constructor() {
         onProgress: (ScanProgress) -> Unit = {},
     ): Result<List<SongEntity>> = withContext(Dispatchers.IO) {
         try {
+            // 重置实例级状态，避免上次扫描残留
+            lastProgressTime = 0L
+            lastProgressCount = -1
             val songs = mutableListOf<SongEntity>()
             var scannedCount = 0
             scanRecursive(smbClient, path, serverId, songs, onProgress) { scannedCount = it }

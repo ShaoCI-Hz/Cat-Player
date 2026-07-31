@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 data class TimerOption(val label: String, val minutes: Int)
 
@@ -30,7 +31,7 @@ fun SleepTimerSheet(
         TimerOption("90 分钟", 90),
     )
 
-    val remaining by viewModel.remainingSeconds.collectAsState()
+    val remaining by viewModel.remainingSeconds.collectAsStateWithLifecycle()
     val isTimerRunning = remaining > 0
 
     ModalBottomSheet(

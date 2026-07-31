@@ -12,6 +12,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -19,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hezi.juyumao.player.audio.LyricsData
 import com.hezi.juyumao.player.audio.LrcParser
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -38,16 +41,30 @@ fun LyricsView(
         return
     }
 
-    val currentIndex by remember {
+    val currentIndex by remember(lyricsData) {
         derivedStateOf { LrcParser.findCurrentLineIndex(lyricsData.lines, currentPositionMs) }
     }
 
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
-    // 平滑滚动到当前行
-    LaunchedEffect(currentIndex) {
-        if (currentIndex >= 0) {
+    // 用户手动滚动时暂停自动滚动，5秒后恢复
+    var autoScrollEnabled by remember { mutableStateOf(true) }
+
+    // 监听用户滚动
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) {
+            autoScrollEnabled = false
+        } else {
+            // 用户停止滚动 5 秒后恢复自动滚动
+            delay(5000)
+            autoScrollEnabled = true
+        }
+    }
+
+    // 自动滚动到当前行（仅在用户未手动滚动时）
+    LaunchedEffect(currentIndex, autoScrollEnabled) {
+        if (currentIndex >= 0 && autoScrollEnabled) {
             coroutineScope.launch {
                 listState.animateScrollToItem(
                     index = maxOf(0, currentIndex - 4),
@@ -69,7 +86,6 @@ fun LyricsView(
             val inAnimRange = distance <= 5
 
             if (inAnimRange) {
-                // 仅在 currentIndex ± 5 范围内应用动画
                 val alpha by animateFloatAsState(
                     targetValue = when {
                         isCurrent -> 1f
@@ -120,10 +136,7 @@ fun LyricsView(
                         .clickable(enabled = onLineClick != null) {
                             onLineClick?.invoke(line.timeMs)
                         }
-                        .padding(
-                            horizontal = 28.dp,
-                            vertical = if (isCurrent) 12.dp else 6.dp,
-                        ),
+                        .padding(horizontal = 28.dp, vertical = if (isCurrent) 12.dp else 6.dp),
                     fontSize = animatedFontSize.sp,
                     fontWeight = if (isCurrent && fontBold) FontWeight.Bold
                                 else if (distance <= 1) FontWeight.Medium
@@ -133,20 +146,21 @@ fun LyricsView(
                     lineHeight = (animatedFontSize * 1.5f).sp,
                 )
             } else {
-                // 范围外使用静态样式
+                // 动画范围外的行，静态渲染，节省性能
                 Text(
                     text = line.text,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .alpha(0.12f)
                         .clickable(enabled = onLineClick != null) {
                             onLineClick?.invoke(line.timeMs)
                         }
                         .padding(horizontal = 28.dp, vertical = 6.dp),
-                    fontSize = 16.sp,
+                    fontSize = (fontSize - 2f).sp,
                     fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f),
                     textAlign = TextAlign.Center,
-                    lineHeight = 24.sp,
+                    lineHeight = ((fontSize - 2f) * 1.5f).sp,
                 )
             }
         }

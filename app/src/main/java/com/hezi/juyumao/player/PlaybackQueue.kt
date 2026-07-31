@@ -6,6 +6,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/**
+ * 播放队列管理（不通过 Hilt 注入，由 PlaybackController 直接创建）
+ */
 class PlaybackQueue {
 
     private val _songs = MutableStateFlow<List<Song>>(emptyList())

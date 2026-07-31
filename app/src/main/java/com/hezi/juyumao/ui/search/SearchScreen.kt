@@ -15,14 +15,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun SearchScreen(
     onSongClick: (Long) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
-    val query by viewModel.searchQuery.collectAsState()
-    val results by viewModel.searchResults.collectAsState()
+    val query by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val results by viewModel.searchResults.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Spacer(modifier = Modifier.height(48.dp))

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -21,7 +22,7 @@ import com.hezi.juyumao.ui.theme.JuYuMaoTheme
 @Composable
 fun JuYuMaoApp() {
     val appViewModel: AppViewModel = hiltViewModel()
-    val themeMode by appViewModel.themeMode.collectAsState()
+    val themeMode by appViewModel.themeMode.collectAsStateWithLifecycle()
 
     JuYuMaoTheme(themeMode = themeMode) {
         JuYuMaoAppContent(appViewModel)
@@ -43,9 +44,9 @@ private fun JuYuMaoAppContent(
         Screen.Settings.route,
     )
 
-    val currentSong by appViewModel.currentSong.collectAsState()
-    val artworkUri by appViewModel.artworkUri.collectAsState()
-    val isPlaying by appViewModel.isPlaying.collectAsState()
+    val currentSong by appViewModel.currentSong.collectAsStateWithLifecycle()
+    val artworkUri by appViewModel.artworkUri.collectAsStateWithLifecycle()
+    val isPlaying by appViewModel.isPlaying.collectAsStateWithLifecycle()
 
     Scaffold(
         bottomBar = {

@@ -55,25 +55,40 @@ class PlayerViewModel @Inject constructor(
     /** 取消旧加载任务，防止快速切歌竞态 */
     private var loadJob: Job? = null
 
+    /** 追踪是否已为当前歌曲递增过 playCount */
+    private var playCountIncremented = false
+
     init {
         val songId = savedStateHandle.get<Long>("songId")
         if (songId != null && songId > 0) {
             loadSong(songId)
         }
+        // 监听播放状态，首次播放时递增 playCount
+        viewModelScope.launch {
+            playbackStateHolder.isPlaying.collect { playing ->
+                if (playing && !playCountIncremented) {
+                    playCountIncremented = true
+                    _currentSong.value?.let { song ->
+                        songDao.update(song.copy(
+                            playCount = song.playCount + 1,
+                            lastPlayedAt = System.currentTimeMillis(),
+                        ))
+                    }
+                }
+            }
+        }
     }
 
     fun loadSong(songId: Long) {
         loadJob?.cancel()
+        playCountIncremented = false // 新歌曲重置标记
         loadJob = viewModelScope.launch {
             val song = songDao.getById(songId) ?: return@launch
             _currentSong.value = song
             playbackStateHolder.updateSong(song)
 
-            // 更新播放记录
-            songDao.update(song.copy(
-                lastPlayedAt = System.currentTimeMillis(),
-                playCount = song.playCount + 1,
-            ))
+            // 只更新 lastPlayedAt，playCount 在实际开始播放时才递增
+            songDao.update(song.copy(lastPlayedAt = System.currentTimeMillis()))
 
             // 加载封面
             val artPath = metadataRepository.getCachedArtworkPath(song.id)

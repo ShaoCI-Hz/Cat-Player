@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 
 @Composable
@@ -24,7 +25,7 @@ fun BrowseScreen(
     onSongClick: (Long) -> Unit = {},
     viewModel: BrowseViewModel = hiltViewModel(),
 ) {
-    val allSongs by viewModel.allSongs.collectAsState()
+    val allSongs by viewModel.allSongs.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("全部", "本地", "NAS")
 
