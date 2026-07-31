@@ -5,9 +5,8 @@ import com.hezi.juyumao.domain.model.Song
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
 
-class PlaybackQueue @Inject constructor() {
+class PlaybackQueue {
 
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     val songs: StateFlow<List<Song>> = _songs.asStateFlow()
@@ -39,7 +38,13 @@ class PlaybackQueue @Inject constructor() {
             RepeatMode.ALL -> {
                 if (shuffle) {
                     val shuffleIdx = _shuffleOrder.value.indexOf(_currentIndex.value)
-                    _shuffleOrder.value[(shuffleIdx + 1) % songs.size]
+                    // 修复: indexOf 返回 -1 时重建 shuffle order
+                    if (shuffleIdx == -1) {
+                        _shuffleOrder.value = songs.indices.shuffled()
+                        (_currentIndex.value + 1) % songs.size
+                    } else {
+                        _shuffleOrder.value[(shuffleIdx + 1) % songs.size]
+                    }
                 } else {
                     (_currentIndex.value + 1) % songs.size
                 }
@@ -49,7 +54,7 @@ class PlaybackQueue @Inject constructor() {
                 if (next >= songs.size) return null
                 if (shuffle) {
                     val shuffleIdx = _shuffleOrder.value.indexOf(_currentIndex.value)
-                    if (shuffleIdx + 1 >= songs.size) return null
+                    if (shuffleIdx == -1 || shuffleIdx + 1 >= songs.size) return null
                     _shuffleOrder.value[shuffleIdx + 1]
                 } else next
             }
@@ -59,12 +64,25 @@ class PlaybackQueue @Inject constructor() {
         return currentSong()
     }
 
-    fun previous(repeatMode: RepeatMode): Song? {
+    fun previous(repeatMode: RepeatMode, shuffle: Boolean = false): Song? {
         val songs = _songs.value
         if (songs.isEmpty()) return null
 
         _currentIndex.value = when (repeatMode) {
-            RepeatMode.ALL -> (_currentIndex.value - 1 + songs.size) % songs.size
+            RepeatMode.ALL -> {
+                if (shuffle) {
+                    val shuffleIdx = _shuffleOrder.value.indexOf(_currentIndex.value)
+                    if (shuffleIdx == -1) {
+                        _shuffleOrder.value = songs.indices.shuffled()
+                        songs.size - 1
+                    } else {
+                        val prevIdx = if (shuffleIdx <= 0) songs.size - 1 else shuffleIdx - 1
+                        _shuffleOrder.value[prevIdx]
+                    }
+                } else {
+                    (_currentIndex.value - 1 + songs.size) % songs.size
+                }
+            }
             else -> maxOf(0, _currentIndex.value - 1)
         }
         return currentSong()
@@ -75,6 +93,8 @@ class PlaybackQueue @Inject constructor() {
         if (index !in songs.indices) return
         songs.removeAt(index)
         _songs.value = songs
+        // 修复: 删除后重建 shuffle 索引
+        _shuffleOrder.value = songs.indices.shuffled()
         if (_currentIndex.value >= songs.size) {
             _currentIndex.value = maxOf(0, songs.size - 1)
         }

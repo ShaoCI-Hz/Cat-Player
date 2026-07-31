@@ -71,6 +71,7 @@ dependencies {
 
     // Lifecycle
     implementation(libs.lifecycle.runtime)
+    implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel)
 
     // Hilt

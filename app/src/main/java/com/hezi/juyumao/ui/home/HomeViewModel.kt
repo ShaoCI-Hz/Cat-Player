@@ -162,7 +162,7 @@ fun generateDailyCard(): DailyCardData {
     }
     val weekDay = arrayOf("星期一","星期二","星期三","星期四","星期五","星期六","星期日")[now.dayOfWeek.value - 1]
     val dateText = "${now.monthValue}月${now.dayOfMonth}日 $weekDay"
-    val seed = now.toLocalDate().toEpochDay().toInt()
+    val seed = kotlin.math.abs(now.toLocalDate().toEpochDay().toInt())
     val (quote, author) = musicQuotes[seed % musicQuotes.size]
     return DailyCardData(greeting = greeting, dateText = dateText, quote = quote, quoteAuthor = author)
 }

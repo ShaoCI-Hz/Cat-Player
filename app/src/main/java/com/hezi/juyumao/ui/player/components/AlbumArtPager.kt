@@ -26,10 +26,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import java.io.File
 
-/**
- * 专辑封面展示组件
- * 支持方形圆角和圆形唱片两种样式
- */
 @Composable
 fun AlbumArtPager(
     artworkUri: String?,
@@ -38,18 +34,20 @@ fun AlbumArtPager(
     modifier: Modifier = Modifier,
     size: Dp = 280.dp,
 ) {
-    // 旋转动画（圆形唱片模式）
-    val infiniteTransition = rememberInfiniteTransition(label = "rotate")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(20000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "rotation",
-    )
-
     val shape = if (isRound) CircleShape else RoundedCornerShape(16.dp)
+
+    // 旋转动画（仅圆形唱片模式时创建）
+    val rotation = if (isRound) {
+        val infiniteTransition = rememberInfiniteTransition(label = "rotate")
+        infiniteTransition.animateFloat(
+            initialValue = 0f, targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(20000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+            label = "rotation",
+        ).value
+    } else 0f
 
     Box(
         modifier = modifier
@@ -70,7 +68,6 @@ fun AlbumArtPager(
                 contentScale = ContentScale.Crop,
             )
         } else {
-            // 占位：渐变背景 + 音符图标
             Box(
                 modifier = Modifier.fillMaxSize().background(
                     Brush.linearGradient(

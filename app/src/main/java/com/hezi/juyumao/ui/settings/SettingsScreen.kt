@@ -207,7 +207,8 @@ fun SettingsScreen(
                     }
                 }
             },
-            confirmButton = {
+            confirmButton = {},
+            dismissButton = {
                 TextButton(onClick = { showThemeDialog = false }) {
                     Text("取消")
                 }

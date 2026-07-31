@@ -9,3 +9,13 @@
 
 # Media3
 -keep class androidx.media3.** { *; }
+
+# jmdns (mDNS discovery, uses reflection)
+-keep class javax.jmdns.** { *; }
+-keep class org.jmdns.** { *; }
+
+# jaudiotagger (audio metadata, uses reflection)
+-keep class org.jaudiotagger.** { *; }
+
+# Kotlin Coroutines
+-keepnames class kotlinx.coroutines.** { *; }

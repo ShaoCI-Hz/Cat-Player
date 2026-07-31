@@ -15,14 +15,13 @@ import com.hezi.juyumao.data.local.db.entity.SongEntity
 @Database(
     entities = [SongEntity::class, ServerEntity::class, PlaylistEntity::class],
     version = 2,
-    exportSchema = true,
+    exportSchema = false,
 )
 abstract class JuYuMaoDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun serverDao(): ServerDao
 
     companion object {
-        // 版本1→2：SongEntity 增加元数据和收藏字段
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE songs ADD COLUMN albumArtist TEXT DEFAULT NULL")
@@ -37,7 +36,8 @@ abstract class JuYuMaoDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE songs ADD COLUMN hasEmbeddedLyrics INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE songs ADD COLUMN hasExternalLyrics INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE songs ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0")
-                // 为 filePath 创建唯一索引
+                // 先去重再建索引，避免重复数据导致崩溃
+                db.execSQL("DELETE FROM songs WHERE rowid NOT IN (SELECT MIN(rowid) FROM songs GROUP BY filePath)")
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_songs_filePath ON songs(filePath)")
             }
         }
@@ -47,7 +47,10 @@ abstract class JuYuMaoDatabase : RoomDatabase() {
                 context,
                 JuYuMaoDatabase::class.java,
                 "juyumao.db",
-            ).addMigrations(MIGRATION_1_2).build()
+            )
+                .addMigrations(MIGRATION_1_2)
+                .fallbackToDestructiveMigration()
+                .build()
         }
     }
 }
