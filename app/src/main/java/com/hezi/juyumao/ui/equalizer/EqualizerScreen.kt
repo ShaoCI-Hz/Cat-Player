@@ -28,7 +28,7 @@ fun EqualizerScreen(
     viewModel: EqualizerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    var selectedPresetIndex by remember { mutableIntStateOf(-1) }
+    var selectedPresetIndex by remember(state.currentPreset) { mutableIntStateOf(state.currentPreset.toInt()) }
 
     Column(
         modifier = Modifier

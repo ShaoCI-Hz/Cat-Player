@@ -5,6 +5,9 @@ import androidx.room.*
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 import kotlinx.coroutines.flow.Flow
 
+// 转义 LIKE 查询中的通配符
+private fun String.escapeLike(): String = replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 @Dao
 interface SongDao {
     @Query("SELECT * FROM songs ORDER BY addedAt DESC")
@@ -19,8 +22,14 @@ interface SongDao {
     @Query("SELECT * FROM songs ORDER BY lastPlayedAt DESC LIMIT 20")
     fun getRecentlyPlayed(): Flow<List<SongEntity>>
 
-    @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' OR album LIKE '%' || :query || '%'")
-    fun search(query: String): Flow<List<SongEntity>>
+    // 搜索时先转义再用 ESCAPE '\' 匹配
+    fun search(query: String): Flow<List<SongEntity>> {
+        val escaped = query.escapeLike()
+        return searchInternal("%$escaped%")
+    }
+
+    @Query("SELECT * FROM songs WHERE title LIKE :pattern ESCAPE '\\' OR artist LIKE :pattern ESCAPE '\\' OR album LIKE :pattern ESCAPE '\\'")
+    fun searchInternal(pattern: String): Flow<List<SongEntity>>
 
     @Query("SELECT COUNT(*) FROM songs")
     fun getSongCount(): Flow<Int>
@@ -31,14 +40,25 @@ interface SongDao {
     @Query("SELECT COUNT(DISTINCT album) FROM songs")
     fun getAlbumCount(): Flow<Int>
 
-    @Query("SELECT COUNT(DISTINCT artist) FROM songs WHERE artist != '未知艺术家'")
-    fun getArtistCount(): Flow<Int>
+    @Query("SELECT COUNT(DISTINCT artist) FROM songs WHERE artist != :unknownArtist")
+    fun getArtistCount(unknownArtist: String = SongEntity.UNKNOWN_ARTIST): Flow<Int>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(song: SongEntity)
+    @Query("UPDATE songs SET isFavorite = :isFavorite WHERE id = :id")
+    suspend fun updateFavorite(id: Long, isFavorite: Boolean)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(songs: List<SongEntity>)
+    @Query("SELECT * FROM songs WHERE isFavorite = 1 ORDER BY addedAt DESC")
+    fun getFavorites(): Flow<List<SongEntity>>
+
+    // CRITICAL-6: 使用 Upsert 避免 REPLACE 删除再插入导致丢失 ID
+    @Upsert
+    suspend fun upsert(song: SongEntity)
+
+    @Upsert
+    suspend fun upsertAll(songs: List<SongEntity>)
+
+    // 保留旧方法名兼容，内部委托给 upsert
+    suspend fun insert(song: SongEntity) = upsert(song)
+    suspend fun insertAll(songs: List<SongEntity>) = upsertAll(songs)
 
     @Update
     suspend fun update(song: SongEntity)

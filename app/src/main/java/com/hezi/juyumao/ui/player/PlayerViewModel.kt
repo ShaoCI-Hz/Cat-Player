@@ -6,22 +6,21 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
 import com.hezi.juyumao.data.local.db.dao.SongDao
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 import com.hezi.juyumao.data.repository.MetadataRepository
 import com.hezi.juyumao.data.repository.SettingsRepository
 import com.hezi.juyumao.player.MusicPlayerService
+import com.hezi.juyumao.player.PlaybackController
 import com.hezi.juyumao.player.PlaybackStateHolder
 import com.hezi.juyumao.player.audio.LyricsData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -31,7 +30,7 @@ class PlayerViewModel @Inject constructor(
     private val songDao: SongDao,
     private val metadataRepository: MetadataRepository,
     private val playbackStateHolder: PlaybackStateHolder,
-    private val exoPlayer: ExoPlayer,
+    private val playbackController: PlaybackController,
     private val settingsRepository: SettingsRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -53,22 +52,19 @@ class PlayerViewModel @Inject constructor(
     val lyricsFontBold: StateFlow<Boolean> = settingsRepository.lyricsFontBold
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    /** 取消旧加载任务，防止快速切歌竞态 */
+    private var loadJob: Job? = null
+
     init {
         val songId = savedStateHandle.get<Long>("songId")
         if (songId != null && songId > 0) {
             loadSong(songId)
         }
-        // 轮询进度
-        viewModelScope.launch {
-            while (true) {
-                delay(500)
-                playbackStateHolder.pollPosition()
-            }
-        }
     }
 
-    private fun loadSong(songId: Long) {
-        viewModelScope.launch {
+    fun loadSong(songId: Long) {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             val song = songDao.getById(songId) ?: return@launch
             _currentSong.value = song
             playbackStateHolder.updateSong(song)
@@ -97,26 +93,8 @@ class PlayerViewModel @Inject constructor(
                 _lyrics.value = metadataRepository.getLyrics(song)
             } catch (_: Exception) {}
 
-            // 设置 ExoPlayer 并播放（带元数据，通知栏显示歌曲信息）
-            val mediaItem = MediaItem.Builder()
-                .setUri(song.filePath)
-                .setMediaMetadata(
-                    androidx.media3.common.MediaMetadata.Builder()
-                        .setTitle(song.title)
-                        .setArtist(song.artist)
-                        .setAlbumTitle(song.album)
-                        .also { builder ->
-                            if (artPath != null) {
-                                builder.setArtworkUri(android.net.Uri.parse("file://$artPath"))
-                            }
-                        }
-                        .build()
-                )
-                .build()
-            exoPlayer.setMediaItem(mediaItem)
-            exoPlayer.prepare()
-            exoPlayer.playWhenReady = true
-            playbackStateHolder.updatePlaying(true)
+            // 通过 PlaybackController 加载并播放
+            playbackController.loadPlaylist(listOf(song), 0)
 
             // 启动通知栏服务
             try {
@@ -127,16 +105,26 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun seekTo(positionMs: Long) {
-        playbackStateHolder.seekTo(positionMs)
+        playbackController.seekTo(positionMs)
     }
 
     fun togglePlay() {
-        if (exoPlayer.isPlaying) {
-            exoPlayer.pause()
-            playbackStateHolder.updatePlaying(false)
-        } else {
-            exoPlayer.play()
-            playbackStateHolder.updatePlaying(true)
-        }
+        playbackController.togglePlay()
+    }
+
+    fun next() {
+        playbackController.next()
+    }
+
+    fun previous() {
+        playbackController.previous()
+    }
+
+    fun setShuffle(enabled: Boolean) {
+        playbackController.setShuffle(enabled)
+    }
+
+    fun setRepeat(modeIndex: Int) {
+        playbackController.setRepeat(modeIndex)
     }
 }

@@ -26,7 +26,9 @@ class PlaybackStateHolder @Inject constructor() {
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration
 
-    private var exoPlayer: ExoPlayer? = null
+    @Volatile private var exoPlayer: ExoPlayer? = null
+
+    fun getExoPlayer(): ExoPlayer? = exoPlayer
 
     fun bindPlayer(player: ExoPlayer) {
         exoPlayer = player

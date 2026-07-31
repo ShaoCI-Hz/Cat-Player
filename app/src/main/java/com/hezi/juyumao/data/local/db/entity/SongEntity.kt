@@ -1,14 +1,18 @@
 package com.hezi.juyumao.data.local.db.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "songs")
+@Entity(
+    tableName = "songs",
+    indices = [Index(value = ["filePath"], unique = true)],
+)
 data class SongEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
-    val artist: String = "未知艺术家",
-    val album: String = "未知专辑",
+    val artist: String = UNKNOWN_ARTIST,
+    val album: String = UNKNOWN_ALBUM,
     val albumArtist: String? = null,
     val albumArtUri: String? = null,
     val duration: Long = 0L,
@@ -33,4 +37,10 @@ data class SongEntity(
     val bitsPerSample: Int = 0,
     val hasEmbeddedLyrics: Boolean = false,
     val hasExternalLyrics: Boolean = false,
-)
+    val isFavorite: Boolean = false,
+) {
+    companion object {
+        const val UNKNOWN_ARTIST = "未知艺术家"
+        const val UNKNOWN_ALBUM = "未知专辑"
+    }
+}

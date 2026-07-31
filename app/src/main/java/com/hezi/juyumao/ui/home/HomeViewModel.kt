@@ -3,11 +3,15 @@ package com.hezi.juyumao.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hezi.juyumao.data.local.db.entity.SongEntity
+import com.hezi.juyumao.data.remote.smb.SmbConnectionState
 import com.hezi.juyumao.data.repository.MusicRepository
+import com.hezi.juyumao.data.repository.SmbRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import javax.inject.Inject
@@ -35,6 +39,7 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val musicRepository: MusicRepository,
+    smbRepository: SmbRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())

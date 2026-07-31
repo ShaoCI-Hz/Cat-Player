@@ -33,6 +33,7 @@ fun PlayerScreen(
     var shuffleEnabled by remember { mutableStateOf(false) }
     var repeatMode by remember { mutableIntStateOf(0) }
     var isFavorite by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // ===== 背景层：封面模糊 + 主色调 + 流光 =====
@@ -59,6 +60,7 @@ fun PlayerScreen(
                 lyricsData = lyrics,
                 currentPositionMs = position,
                 isPlaying = isPlaying,
+                showLyrics = showLyrics,
                 lyricsFontSize = lyricsFontSize,
                 lyricsFontBold = lyricsFontBold,
                 onLineClick = { viewModel.seekTo(it) },
@@ -117,19 +119,25 @@ fun PlayerScreen(
                 ImmersiveControlRow(
                     isPlaying = isPlaying,
                     onPlayPause = { viewModel.togglePlay() },
-                    onPrevious = { },
-                    onNext = { },
+                    onPrevious = { viewModel.previous() },
+                    onNext = { viewModel.next() },
                 )
             } else {
                 FullControlRow(
                     isPlaying = isPlaying,
                     shuffleEnabled = shuffleEnabled,
                     repeatMode = repeatMode,
-                    onPrevious = { },
+                    onPrevious = { viewModel.previous() },
                     onPlayPause = { viewModel.togglePlay() },
-                    onNext = { },
-                    onShuffle = { shuffleEnabled = !shuffleEnabled },
-                    onRepeat = { repeatMode = (repeatMode + 1) % 3 },
+                    onNext = { viewModel.next() },
+                    onShuffle = {
+                        shuffleEnabled = !shuffleEnabled
+                        viewModel.setShuffle(shuffleEnabled)
+                    },
+                    onRepeat = {
+                        repeatMode = (repeatMode + 1) % 3
+                        viewModel.setRepeat(repeatMode)
+                    },
                 )
             }
 
@@ -142,9 +150,9 @@ fun PlayerScreen(
                 exit = fadeOut(tween(200)),
             ) {
                 BottomFunctionBar(
-                    showLyrics = false,
+                    showLyrics = showLyrics,
                     isFavorite = isFavorite,
-                    onLyricsClick = { },
+                    onLyricsClick = { showLyrics = !showLyrics },
                     onQueueClick = { },
                     onFavoriteClick = { isFavorite = !isFavorite },
                     onMoreClick = { },

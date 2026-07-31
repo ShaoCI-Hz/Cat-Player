@@ -115,10 +115,8 @@ class MusicPlayerService : MediaSessionService() {
 
     override fun onDestroy() {
         notificationManager?.setPlayer(null)
-        mediaSession?.run {
-            player.release()
-            release()
-        }
+        // 不释放 ExoPlayer（由 Hilt 单例管理生命周期），只释放 mediaSession
+        mediaSession?.release()
         mediaSession = null
         super.onDestroy()
     }

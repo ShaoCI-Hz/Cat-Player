@@ -3,6 +3,8 @@ package com.hezi.juyumao.data.remote.smb
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
@@ -17,9 +19,16 @@ class SmbConnectionPool @Inject constructor() {
     private val idleTimeoutMs = 60_000L
     private val connections = ConcurrentHashMap<Long, PooledConnection>()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val connectionMutex = Mutex()
 
-    private val _connectionState = MutableStateFlow<SmbConnectionState>(SmbConnectionState.Disconnected)
-    val connectionState: StateFlow<SmbConnectionState> = _connectionState
+    // 每个 serverId 独立的连接状态
+    private val _connectionStates = ConcurrentHashMap<Long, MutableStateFlow<SmbConnectionState>>()
+
+    fun connectionStateFor(serverId: Long): StateFlow<SmbConnectionState> =
+        getMutableStateFor(serverId)
+
+    private fun getMutableStateFor(serverId: Long): MutableStateFlow<SmbConnectionState> =
+        _connectionStates.getOrPut(serverId) { MutableStateFlow(SmbConnectionState.Disconnected) }
 
     init {
         scope.launch {
@@ -37,7 +46,9 @@ class SmbConnectionPool @Inject constructor() {
         username: String,
         password: String,
         shareName: String,
-    ): SmbClientWrapper {
+    ): SmbClientWrapper = connectionMutex.withLock {
+        val stateFlow = getMutableStateFor(serverId)
+
         // 检查已有连接
         connections[serverId]?.let { pooled ->
             if (pooled.client.isConnected()) {
@@ -50,18 +61,18 @@ class SmbConnectionPool @Inject constructor() {
             evictOldest()
         }
 
-        _connectionState.value = SmbConnectionState.Connecting
+        stateFlow.value = SmbConnectionState.Connecting
 
         // 每次创建新的客户端实例，避免状态残留
         val client = SmbClientWrapper()
         val result = client.connect(host, port, username, password, shareName)
 
-        return if (result.isSuccess) {
+        if (result.isSuccess) {
             connections[serverId] = PooledConnection(client, serverId)
-            _connectionState.value = SmbConnectionState.Connected
+            stateFlow.value = SmbConnectionState.Connected
             client
         } else {
-            _connectionState.value = SmbConnectionState.Error(
+            stateFlow.value = SmbConnectionState.Error(
                 result.exceptionOrNull()?.message ?: "连接失败"
             )
             throw result.exceptionOrNull() ?: Exception("连接失败")
@@ -74,22 +85,28 @@ class SmbConnectionPool @Inject constructor() {
 
     fun disconnect(serverId: Long) {
         connections.remove(serverId)?.client?.disconnect()
-        if (connections.isEmpty()) {
-            _connectionState.value = SmbConnectionState.Disconnected
-        }
+        _connectionStates[serverId]?.value = SmbConnectionState.Disconnected
     }
 
     fun disconnectAll() {
         connections.values.forEach { it.client.disconnect() }
         connections.clear()
-        _connectionState.value = SmbConnectionState.Disconnected
+        _connectionStates.values.forEach { it.value = SmbConnectionState.Disconnected }
+    }
+
+    // 添加 close 方法
+    fun close() {
+        scope.cancel()
+        disconnectAll()
     }
 
     private fun cleanupIdleConnections() {
         val now = System.currentTimeMillis()
-        connections.entries.removeIf { (_, pooled) ->
+        connections.entries.removeIf { (serverId, pooled) ->
+            // HIGH: 修复空闲清理 — 应该清理超时的连接，不管是否还连着
             if (now - pooled.lastAccessed > idleTimeoutMs) {
                 pooled.client.disconnect()
+                _connectionStates[serverId]?.value = SmbConnectionState.Disconnected
                 true
             } else false
         }

@@ -28,11 +28,18 @@ fun BrowseScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("全部", "本地", "NAS")
 
-    val filteredSongs = when (selectedTab) {
-        1 -> allSongs.filter { it.source == "LOCAL" }
-        2 -> allSongs.filter { it.source == "SMB" }
-        else -> allSongs
+    val filteredSongs by remember {
+        derivedStateOf {
+            when (selectedTab) {
+                1 -> allSongs.filter { it.source == "LOCAL" }
+                2 -> allSongs.filter { it.source == "SMB" }
+                else -> allSongs
+            }
+        }
     }
+
+    val localCount by remember { derivedStateOf { allSongs.count { it.source == "LOCAL" } } }
+    val smbCount by remember { derivedStateOf { allSongs.count { it.source == "SMB" } } }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Spacer(modifier = Modifier.height(48.dp))
@@ -59,12 +66,12 @@ fun BrowseScreen(
                     onClick = { selectedTab = index },
                     label = {
                         Text(
-                            text = if (index == 0) "$tab (${allSongs.size})"
-                                   else "$tab (${when(index) {
-                                       1 -> allSongs.count { it.source == "LOCAL" }
-                                       2 -> allSongs.count { it.source == "SMB" }
-                                       else -> 0
-                                   }})",
+                            text = when(index) {
+                        0 -> "$tab (${allSongs.size})"
+                        1 -> "$tab ($localCount)"
+                        2 -> "$tab ($smbCount)"
+                        else -> tab
+                    },
                         )
                     },
                 )

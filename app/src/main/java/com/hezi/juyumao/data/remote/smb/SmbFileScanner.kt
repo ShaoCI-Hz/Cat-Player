@@ -1,8 +1,10 @@
 package com.hezi.juyumao.data.remote.smb
 
+import android.util.Log
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 /**
  * SMB 文件扫描进度
@@ -15,7 +17,7 @@ data class ScanProgress(
     val error: String? = null,
 )
 
-class SmbFileScanner {
+class SmbFileScanner @Inject constructor() {
 
     suspend fun scanDirectory(
         smbClient: SmbClientWrapper,
@@ -40,6 +42,9 @@ class SmbFileScanner {
         }
     }
 
+    private var lastProgressTime = 0L
+    private var lastProgressCount = -1
+
     private suspend fun scanRecursive(
         smbClient: SmbClientWrapper,
         path: String,
@@ -49,7 +54,10 @@ class SmbFileScanner {
         scannedCountRef: (Int) -> Unit,
     ) {
         val filesResult = smbClient.listFiles(path)
-        if (filesResult.isFailure) return
+        if (filesResult.isFailure) {
+            Log.e("SmbFileScanner", "列出文件失败: $path", filesResult.exceptionOrNull())
+            return
+        }
 
         val files = filesResult.getOrNull() ?: return
 
@@ -83,11 +91,17 @@ class SmbFileScanner {
                 )
             }
             scannedCountRef(result.size)
-            onProgress(ScanProgress(
-                scannedFiles = result.size,
-                foundSongs = result.size,
-                currentPath = file.path,
-            ))
+            // 节流：每 50 个文件或 500ms 调用一次
+            val now = System.currentTimeMillis()
+            if (result.size - lastProgressCount >= 50 || now - lastProgressTime >= 500) {
+                lastProgressCount = result.size
+                lastProgressTime = now
+                onProgress(ScanProgress(
+                    scannedFiles = result.size,
+                    foundSongs = result.size,
+                    currentPath = file.path,
+                ))
+            }
         }
     }
 }

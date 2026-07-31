@@ -26,19 +26,23 @@ class LyricsRepository @Inject constructor(
             return@withContext parseLrcFile(lrcFile)
         }
 
+        // 只调用一次 listFiles，缓存结果
+        val dirFiles = parentDir.listFiles() ?: return@withContext null
+
         // Try case-insensitive match
-        parentDir.listFiles()?.find {
+        dirFiles.find {
             it.extension.lowercase() == "lrc" &&
             it.nameWithoutExtension.equals(baseName, ignoreCase = true)
         }?.let {
             return@withContext parseLrcFile(it)
         }
 
-        // Try embedded in same directory with similar name
-        parentDir.listFiles()?.filter {
+        // Try embedded in same directory with similar name（最少 5 个字符）
+        val namePrefix = baseName.take(maxOf(5, baseName.length))
+        dirFiles.filter {
             it.extension.lowercase() == "lrc" &&
-            it.nameWithoutExtension.contains(baseName.take(10), ignoreCase = true)
-        }?.minByOrNull { it.name.length }?.let {
+            it.nameWithoutExtension.contains(namePrefix, ignoreCase = true)
+        }.minByOrNull { it.name.length }?.let {
             return@withContext parseLrcFile(it)
         }
 

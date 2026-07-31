@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.hezi.juyumao.data.local.db.entity.SongEntity
+import com.hezi.juyumao.data.remote.smb.SmbConnectionState
 import com.hezi.juyumao.ui.theme.FormatUtils
 import java.io.File
 
@@ -35,9 +36,11 @@ fun HomeScreen(
     onNavigateToSmb: () -> Unit = {},
     onNavigateToEqualizer: () -> Unit = {},
     onNavigateToQueue: () -> Unit = {},
+    onOpenSleepTimer: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showSleepTimer by remember { mutableStateOf(false) }
 
     val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
@@ -122,7 +125,7 @@ fun HomeScreen(
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 QuickActionCard(Icons.Default.Equalizer, "均衡器", onNavigateToEqualizer, Modifier.weight(1f))
-                QuickActionCard(Icons.Default.Timer, "定时关闭", {}, Modifier.weight(1f))
+                QuickActionCard(Icons.Default.Timer, "定时关闭", { showSleepTimer = true }, Modifier.weight(1f))
                 QuickActionCard(Icons.Default.QueueMusic, "播放队列", onNavigateToQueue, Modifier.weight(1f))
             }
         }
@@ -174,12 +177,18 @@ fun HomeScreen(
                 LazyRow(modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(uiState.recentlyPlayed) { song ->
+                    items(items = uiState.recentlyPlayed, key = { it.id }) { song ->
                         RecentSongCard(song = song, onClick = { onNavigateToPlayer(song.id) })
                     }
                 }
             }
         }
+    }
+
+    if (showSleepTimer) {
+        com.hezi.juyumao.ui.sleep.SleepTimerSheet(
+            onDismiss = { showSleepTimer = false },
+        )
     }
 }
 

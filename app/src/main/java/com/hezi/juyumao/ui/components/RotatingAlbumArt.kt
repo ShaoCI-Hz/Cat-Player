@@ -30,6 +30,7 @@ fun RotatingAlbumArt(
     size: Dp = 240.dp,
     artworkUri: String? = null,
 ) {
+    // 用 animateFloatAsState 控制旋转：播放时持续旋转，暂停时平滑停止
     val infiniteTransition = rememberInfiniteTransition(label = "album_rotation")
 
     val rotation by infiniteTransition.animateFloat(
@@ -42,11 +43,22 @@ fun RotatingAlbumArt(
         label = "album_rotation",
     )
 
+    // 记住暂停时的旋转角度
+    var pausedRotation by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(isPlaying, rotation) {
+        if (isPlaying) pausedRotation = rotation
+    }
+    val displayRotation by animateFloatAsState(
+        targetValue = if (isPlaying) rotation else pausedRotation,
+        animationSpec = tween(durationMillis = 300),
+        label = "album_display_rotation",
+    )
+
     Box(
         modifier = modifier
             .size(size)
             .graphicsLayer {
-                rotationZ = if (isPlaying) rotation else 0f
+                rotationZ = displayRotation
             }
             .shadow(elevation = 20.dp, shape = CircleShape)
             .background(

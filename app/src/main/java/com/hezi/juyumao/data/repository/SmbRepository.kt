@@ -18,7 +18,8 @@ class SmbRepository @Inject constructor(
 ) {
     private val discovery = SmbDiscovery()
 
-    val connectionState: Flow<SmbConnectionState> = connectionPool.connectionState
+    // CRITICAL-5: 使用正确的 per-server 状态查询
+    fun connectionStateFor(serverId: Long) = connectionPool.connectionStateFor(serverId)
 
     fun getAllServers(): Flow<List<ServerEntity>> = serverDao.getAllServers()
 

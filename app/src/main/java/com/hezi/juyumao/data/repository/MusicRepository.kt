@@ -1,5 +1,7 @@
 package com.hezi.juyumao.data.repository
 
+import androidx.room.withTransaction
+import com.hezi.juyumao.data.local.db.JuYuMaoDatabase
 import com.hezi.juyumao.data.local.db.dao.SongDao
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 import com.hezi.juyumao.data.local.scanner.LocalMusicScanner
@@ -11,10 +13,11 @@ import javax.inject.Singleton
 
 @Singleton
 class MusicRepository @Inject constructor(
+    private val database: JuYuMaoDatabase,
     private val songDao: SongDao,
     private val localMusicScanner: LocalMusicScanner,
+    private val smbScanner: SmbFileScanner,
 ) {
-    private val smbScanner = SmbFileScanner()
 
     fun getAllSongsPaged() = songDao.getAllSongsPaged()
 
@@ -42,11 +45,12 @@ class MusicRepository @Inject constructor(
         return try {
             val result = localMusicScanner.scanAllMusic()
             result.map { songs ->
-                // 先清除旧的本地歌曲，再插入新的（全量刷新）
-                songDao.deleteBySource("LOCAL")
-                // 分批插入，每批 200 条
-                songs.chunked(200).forEach { batch ->
-                    songDao.insertAll(batch)
+                // 事务保证删除旧数据和插入新数据的原子性
+                database.withTransaction {
+                    songDao.deleteBySource("LOCAL")
+                    songs.chunked(200).forEach { batch ->
+                        songDao.insertAll(batch)
+                    }
                 }
                 songs.size
             }

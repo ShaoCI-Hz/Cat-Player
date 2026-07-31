@@ -61,7 +61,9 @@ fun JuYuMaoNavGraph(
             )
         }
         composable(Screen.Search.route) {
-            SearchScreen()
+            SearchScreen(
+                onSongClick = { songId -> navController.navigate(Screen.Player.createRoute(songId)) },
+            )
         }
         composable(Screen.Settings.route) {
             SettingsScreen(

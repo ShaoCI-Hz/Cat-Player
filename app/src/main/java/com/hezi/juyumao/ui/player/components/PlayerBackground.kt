@@ -40,14 +40,21 @@ fun PlayerBackground(
         if (artworkUri != null) {
             try {
                 dominantColor = withContext(Dispatchers.IO) {
-                    val bitmap = BitmapFactory.decodeFile(artworkUri)
-                    if (bitmap != null) {
-                        val palette = Palette.from(bitmap).generate()
-                        val swatch = palette.dominantSwatch
-                            ?: palette.vibrantSwatch
-                            ?: palette.mutedSwatch
-                        if (swatch != null) Color(swatch.rgb) else Color(0xFF1A1A2E)
-                    } else Color(0xFF1A1A2E)
+                    var bitmap: android.graphics.Bitmap? = null
+                    try {
+                        bitmap = BitmapFactory.decodeFile(artworkUri)
+                        if (bitmap != null) {
+                            val palette = Palette.from(bitmap).generate()
+                            val swatch = palette.dominantSwatch
+                                ?: palette.vibrantSwatch
+                                ?: palette.mutedSwatch
+                            if (swatch != null) Color(swatch.rgb) else Color(0xFF1A1A2E)
+                        } else Color(0xFF1A1A2E)
+                    } catch (_: Exception) {
+                        Color(0xFF1A1A2E)
+                    } finally {
+                        bitmap?.recycle()
+                    }
                 }
             } catch (_: Exception) {}
         }

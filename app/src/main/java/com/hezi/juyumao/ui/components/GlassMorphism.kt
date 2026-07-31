@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.dp
 fun GlassMorphismCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 14.dp,
-    blurRadius: Dp = 20.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(

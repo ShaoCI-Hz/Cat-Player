@@ -1,7 +1,5 @@
 package com.hezi.juyumao.ui.sleep
 
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,11 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
+import androidx.hilt.navigation.compose.hiltViewModel
 
 data class TimerOption(val label: String, val minutes: Int)
 
@@ -23,9 +20,7 @@ data class TimerOption(val label: String, val minutes: Int)
 @Composable
 fun SleepTimerSheet(
     onDismiss: () -> Unit,
-    onTimerSet: (Int) -> Unit,
-    onTimerCancel: () -> Unit,
-    remainingSeconds: Int = 0,
+    viewModel: SleepTimerViewModel = hiltViewModel(),
 ) {
     val options = listOf(
         TimerOption("15 分钟", 15),
@@ -35,18 +30,8 @@ fun SleepTimerSheet(
         TimerOption("90 分钟", 90),
     )
 
-    var isTimerRunning by remember { mutableStateOf(remainingSeconds > 0) }
-    var remaining by remember { mutableIntStateOf(remainingSeconds) }
-
-    LaunchedEffect(isTimerRunning) {
-        while (isTimerRunning && remaining > 0) {
-            delay(1000)
-            remaining--
-            if (remaining <= 0) {
-                isTimerRunning = false
-            }
-        }
-    }
+    val remaining by viewModel.remainingSeconds.collectAsState()
+    val isTimerRunning = remaining > 0
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -74,7 +59,7 @@ fun SleepTimerSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             if (isTimerRunning) {
-                // Countdown display
+                // 倒计时显示
                 val minutes = remaining / 60
                 val seconds = remaining % 60
                 Text(
@@ -85,11 +70,7 @@ fun SleepTimerSheet(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = {
-                        isTimerRunning = false
-                        remaining = 0
-                        onTimerCancel()
-                    },
+                    onClick = { viewModel.cancelTimer() },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error,
                     ),
@@ -98,17 +79,13 @@ fun SleepTimerSheet(
                     Text("取消定时")
                 }
             } else {
-                // Options
+                // 选项列表
                 options.forEach { option ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
-                            .clickable {
-                                remaining = option.minutes * 60
-                                isTimerRunning = true
-                                onTimerSet(option.minutes)
-                            },
+                            .clickable { viewModel.setTimer(option.minutes) },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         ),

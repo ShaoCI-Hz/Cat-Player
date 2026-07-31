@@ -8,6 +8,8 @@ import com.hierynomus.smbj.connection.Connection
 import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.InputStream
 import java.util.EnumSet
@@ -24,10 +26,13 @@ data class SmbFileInfo(
 
 class SmbClientWrapper @Inject constructor() {
 
-    private var client: SMBClient? = null
-    private var connection: Connection? = null
-    private var session: Session? = null
-    private var share: DiskShare? = null
+    @Volatile private var client: SMBClient? = null
+    @Volatile private var connection: Connection? = null
+    @Volatile private var session: Session? = null
+    @Volatile private var share: DiskShare? = null
+
+    // CRITICAL-1: 并发保护，防止两个协程同时 connect 导致资源泄漏
+    private val connectMutex = Mutex()
 
     suspend fun connect(
         host: String,
@@ -35,57 +40,48 @@ class SmbClientWrapper @Inject constructor() {
         username: String = "",
         password: String = "",
         shareName: String,
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            disconnect()
-
-            // 配置超时
-            val config = SmbConfig.builder()
-                .withTimeout(10, TimeUnit.SECONDS)
-                .withSoTimeout(10, TimeUnit.SECONDS)
-                .build()
-
-            client = SMBClient(config)
-            connection = client!!.connect(host, port)
-
-            val ac = if (username.isEmpty()) {
-                AuthenticationContext.anonymous()
-            } else {
-                AuthenticationContext(username, password.toCharArray(), "")
-            }
-
-            session = connection!!.authenticate(ac)
-
-            if (shareName.isBlank()) {
+    ): Result<Unit> = connectMutex.withLock {
+        withContext(Dispatchers.IO) {
+            try {
                 disconnect()
-                return@withContext Result.failure(
-                    SmbConnectionException("请输入共享名称（如 music、Media）")
-                )
-            }
 
-            share = session!!.connectShare(shareName) as DiskShare
-            Result.success(Unit)
-        } catch (e: Exception) {
-            disconnect()
-            val errorMsg = when {
-                e.message?.contains("connect", true) == true ||
-                e.message?.contains("refused", true) == true ->
-                    "无法连接到 $host:$port，请检查 IP 和 NAS 是否在同一网络"
-                e.message?.contains("auth", true) == true ||
-                e.message?.contains("logon", true) == true ->
-                    "用户名或密码错误"
-                e.message?.contains("timeout", true) == true ||
-                e.message?.contains("timed out", true) == true ->
-                    "连接超时（10秒），NAS 可能离线"
-                e.message?.contains("name", true) == true ||
-                e.message?.contains("STATUS_BAD_NETWORK_NAME", true) == true ->
-                    "共享名 '$shareName' 不存在，请检查拼写"
-                e.message?.contains("access", true) == true ||
-                e.message?.contains("STATUS_ACCESS_DENIED", true) == true ->
-                    "没有访问权限，请检查共享文件夹权限"
-                else -> "连接失败: ${e.message}"
+                val config = SmbConfig.builder()
+                    .withTimeout(10, TimeUnit.SECONDS)
+                    .withSoTimeout(10, TimeUnit.SECONDS)
+                    .build()
+
+                client = SMBClient(config)
+                connection = (client ?: error("SMBClient 创建失败")).connect(host, port)
+
+                val ac = if (username.isEmpty()) {
+                    AuthenticationContext.anonymous()
+                } else {
+                    AuthenticationContext(username, password.toCharArray(), "")
+                }
+
+                session = (connection ?: error("SMB 连接未建立")).authenticate(ac)
+
+                if (shareName.isBlank()) {
+                    disconnect()
+                    return@withContext Result.failure(
+                        SmbConnectionException("请输入共享名称（如 music、Media）")
+                    )
+                }
+
+                share = session!!.connectShare(shareName) as DiskShare
+                Result.success(Unit)
+            } catch (e: Exception) {
+                disconnect()
+                val errorMsg = when {
+                    e.message?.contains("connect", true) == true -> "无法连接到 $host:$port，请检查 IP 和 NAS"
+                    e.message?.contains("auth", true) == true -> "用户名或密码错误"
+                    e.message?.contains("timeout", true) == true -> "连接超时（10秒），NAS 可能离线"
+                    e.message?.contains("STATUS_BAD_NETWORK_NAME", true) == true -> "共享名 '$shareName' 不存在"
+                    e.message?.contains("STATUS_ACCESS_DENIED", true) == true -> "没有访问权限"
+                    else -> "连接失败: ${e.message}"
+                }
+                Result.failure(SmbConnectionException(errorMsg, e))
             }
-            Result.failure(SmbConnectionException(errorMsg, e))
         }
     }
 
@@ -112,9 +108,7 @@ class SmbClientWrapper @Inject constructor() {
         try {
             val currentShare = share ?: return@withContext Result.failure(IllegalStateException("未连接"))
             val accessMask = EnumSet.of(AccessMask.FILE_READ_DATA)
-            val shareAccess = java.util.EnumSet.of(
-                com.hierynomus.mssmb2.SMB2ShareAccess.FILE_SHARE_READ
-            )
+            val shareAccess = EnumSet.of(com.hierynomus.mssmb2.SMB2ShareAccess.FILE_SHARE_READ)
             val file = currentShare.openFile(
                 path, accessMask, null, shareAccess,
                 com.hierynomus.mssmb2.SMB2CreateDisposition.FILE_OPEN, null,
@@ -125,19 +119,21 @@ class SmbClientWrapper @Inject constructor() {
         }
     }
 
-    fun isConnected(): Boolean {
-        return share != null && connection?.isConnected == true
+    fun isConnected(): Boolean = synchronized(this) {
+        share != null && connection?.isConnected == true
     }
 
     fun disconnect() {
-        try { share?.close() } catch (_: Exception) {}
-        try { session?.close() } catch (_: Exception) {}
-        try { connection?.close() } catch (_: Exception) {}
-        try { client?.close() } catch (_: Exception) {}
-        share = null
-        session = null
-        connection = null
-        client = null
+        synchronized(this) {
+            try { share?.close() } catch (_: Exception) {}
+            try { session?.close() } catch (_: Exception) {}
+            try { connection?.close() } catch (_: Exception) {}
+            try { client?.close() } catch (_: Exception) {}
+            share = null
+            session = null
+            connection = null
+            client = null
+        }
     }
 }
 

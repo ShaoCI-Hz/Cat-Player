@@ -24,4 +24,15 @@ class AppViewModel @Inject constructor(
     val currentSong: StateFlow<SongEntity?> = playbackStateHolder.currentSong
     val artworkUri: StateFlow<String?> = playbackStateHolder.artworkUri
     val isPlaying: StateFlow<Boolean> = playbackStateHolder.isPlaying
+
+    fun togglePlay() {
+        val exoPlayer = playbackStateHolder.getExoPlayer() ?: return
+        if (exoPlayer.isPlaying) {
+            exoPlayer.pause()
+            playbackStateHolder.updatePlaying(false)
+        } else {
+            exoPlayer.play()
+            playbackStateHolder.updatePlaying(true)
+        }
+    }
 }

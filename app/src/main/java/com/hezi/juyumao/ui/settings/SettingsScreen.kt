@@ -121,9 +121,13 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("14sp", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // HIGH: 拖拽时用本地状态，松手后才写 DataStore
+                    var sliderValue by remember { mutableFloatStateOf(lyricsFontSize) }
+                    LaunchedEffect(lyricsFontSize) { sliderValue = lyricsFontSize }
                     Slider(
-                        value = lyricsFontSize,
-                        onValueChange = { viewModel.setLyricsFontSize(it) },
+                        value = sliderValue,
+                        onValueChange = { sliderValue = it },
+                        onValueChangeFinished = { viewModel.setLyricsFontSize(sliderValue) },
                         valueRange = 14f..28f,
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                         colors = SliderDefaults.colors(

@@ -1,36 +1,42 @@
 package com.hezi.juyumao.ui.player.components
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.hezi.juyumao.player.audio.LyricsData
 import com.hezi.juyumao.ui.lyrics.LyricsView
+import kotlinx.coroutines.launch
 
-/**
- * 封面/歌词上下滑动切换组件
- * Salt Player 标志性交互：上下滑动在封面和歌词之间切换
- */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CoverLyricsPager(
     artworkUri: String?,
     lyricsData: LyricsData?,
     currentPositionMs: Long,
     isPlaying: Boolean,
+    showLyrics: Boolean = false,
     lyricsFontSize: Float = 18f,
     lyricsFontBold: Boolean = true,
     onLineClick: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState(pageCount = { 2 })
+    val coroutineScope = rememberCoroutineScope()
+
+    // 当外部 showLyrics 变化时，切换到歌词页
+    LaunchedEffect(showLyrics) {
+        if (showLyrics && pagerState.currentPage == 0) {
+            coroutineScope.launch { pagerState.animateScrollToPage(1) }
+        } else if (!showLyrics && pagerState.currentPage == 1) {
+            coroutineScope.launch { pagerState.animateScrollToPage(0) }
+        }
+    }
 
     Column(modifier = modifier) {
         VerticalPager(
@@ -39,7 +45,6 @@ fun CoverLyricsPager(
         ) { page ->
             when (page) {
                 0 -> {
-                    // 第一页：专辑封面
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -53,7 +58,6 @@ fun CoverLyricsPager(
                     }
                 }
                 1 -> {
-                    // 第二页：歌词
                     LyricsView(
                         lyricsData = lyricsData,
                         currentPositionMs = currentPositionMs,
@@ -66,7 +70,7 @@ fun CoverLyricsPager(
             }
         }
 
-        // 页面指示器（两个小点）
+        // 页面指示器
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             horizontalArrangement = Arrangement.Center,
