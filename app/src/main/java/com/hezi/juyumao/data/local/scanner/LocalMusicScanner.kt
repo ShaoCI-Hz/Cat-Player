@@ -47,7 +47,6 @@ class LocalMusicScanner @Inject constructor(
                 MediaStore.Audio.Media.TITLE,
                 MediaStore.Audio.Media.ARTIST,
                 MediaStore.Audio.Media.ALBUM,
-                MediaStore.Audio.Media.ALBUM_ID,
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.DATA,
                 MediaStore.Audio.Media.SIZE,
@@ -67,7 +66,6 @@ class LocalMusicScanner @Inject constructor(
                 val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
                 val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
                 val albumCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-                val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
                 val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
                 val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
                 val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
@@ -93,7 +91,6 @@ class LocalMusicScanner @Inject constructor(
                     // 基础元数据来自 MediaStore
                     val mediaStoreArtist = cursor.getString(artistCol) ?: "未知艺术家"
                     val mediaStoreAlbum = cursor.getString(albumCol) ?: "未知专辑"
-                    val albumId = cursor.getLong(albumIdCol)
                     val mimeType = cursor.getString(mimeCol) ?: inferMimeType(filePath)
 
                     // 尝试用 jaudiotagger 提取增强元数据

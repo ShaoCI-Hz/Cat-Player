@@ -37,7 +37,6 @@ fun HomeScreen(
     onNavigateToSmb: () -> Unit = {},
     onNavigateToEqualizer: () -> Unit = {},
     onNavigateToQueue: () -> Unit = {},
-    onOpenSleepTimer: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

@@ -2,6 +2,7 @@ package com.hezi.juyumao.data.local.metadata
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
+import com.hezi.juyumao.data.remote.smb.AudioFileFilter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -129,20 +130,6 @@ class MetadataExtractor @Inject constructor(
             data[0] == 0xFF.toByte() && data[1] == 0xD8.toByte() -> "image/jpeg"
             data[0] == 0x89.toByte() && data[1] == 0x50.toByte() -> "image/png"
             else -> "image/jpeg"
-        }
-    }
-}
-
-// 复用 AudioFileFilter 的引用
-private object AudioFileFilter {
-    fun getMimeType(filePath: String): String {
-        val ext = filePath.substringAfterLast('.', "").lowercase()
-        return when (ext) {
-            "mp3" -> "audio/mpeg"; "aac", "m4a" -> "audio/mp4"; "flac" -> "audio/flac"
-            "wav" -> "audio/wav"; "ogg" -> "audio/ogg"; "opus" -> "audio/opus"
-            "dsf", "dff" -> "audio/dsd"; "ape" -> "audio/ape"; "wv" -> "audio/wavpack"
-            "wma" -> "audio/x-ms-wma"; "aiff", "aif" -> "audio/aiff"
-            else -> "audio/*"
         }
     }
 }

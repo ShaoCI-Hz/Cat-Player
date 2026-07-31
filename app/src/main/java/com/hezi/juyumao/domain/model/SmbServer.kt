@@ -14,4 +14,8 @@ data class SmbServer(
     val musicPath: String = "/",
     val isConnected: Boolean = false,
     val lastConnectedAt: Long = 0L,
-)
+) {
+    // LOW: 防止密码泄露到日志
+    override fun toString(): String =
+        "SmbServer(id=$id, name=$name, ip=$ip, port=$port, username=$username, password=***, shareName=$shareName)"
+}

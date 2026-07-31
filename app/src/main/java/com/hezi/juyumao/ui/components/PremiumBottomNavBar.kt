@@ -42,18 +42,13 @@ fun PremiumBottomNavBar(
                 .fillMaxWidth()
                 .height(68.dp)
                 .shadow(
-                    elevation = 24.dp,
+                    elevation = 12.dp,
                     shape = RoundedCornerShape(34.dp),
-                    ambientColor = Color.Black.copy(alpha = 0.3f),
-                    spotColor = Color.Black.copy(alpha = 0.3f),
+                    ambientColor = Color.Black.copy(alpha = 0.2f),
+                    spotColor = Color.Black.copy(alpha = 0.2f),
                 )
                 .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.12f),
-                            Color.White.copy(alpha = 0.06f),
-                        )
-                    ),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                     shape = RoundedCornerShape(34.dp),
                 )
                 .clip(RoundedCornerShape(34.dp)),

@@ -160,7 +160,7 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Default.Info,
                     title = "版本",
-                    subtitle = "1.0.0",
+                    subtitle = com.hezi.juyumao.BuildConfig.VERSION_NAME,
                     onClick = { },
                 )
                 SettingsItem(

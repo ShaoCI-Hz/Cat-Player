@@ -199,7 +199,7 @@ private fun SongListItem(
                     )
                 }
                 Text(
-                    text = "${song.artist} · ${song.album}",
+                    text = "${song.artist.ifEmpty { "未知艺术家" }} · ${song.album.ifEmpty { "未知专辑" }}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

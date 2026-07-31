@@ -16,7 +16,7 @@ data class DiscoveredServer(
     val domain: String = "",
 )
 
-class SmbDiscovery {
+class SmbDiscovery @javax.inject.Inject constructor() {
 
     @Volatile private var jmdns: JmDNS? = null
     @Volatile private var listener: ServiceListener? = null
