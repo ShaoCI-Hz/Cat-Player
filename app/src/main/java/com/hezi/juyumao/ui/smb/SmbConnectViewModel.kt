@@ -6,8 +6,7 @@ import com.hezi.juyumao.data.local.db.dao.ServerDao
 import com.hezi.juyumao.data.local.db.entity.ServerEntity
 import com.hezi.juyumao.data.remote.discovery.DiscoveredServer
 import com.hezi.juyumao.data.remote.discovery.SmbDiscovery
-import com.hezi.juyumao.data.remote.smb.SmbConnectionPool
-import com.hezi.juyumao.data.remote.smb.SmbConnectionState
+import com.hezi.juyumao.data.remote.smb.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -20,6 +19,7 @@ data class SmbConnectUiState(
     val connectionState: SmbConnectionState = SmbConnectionState.Disconnected,
     val errorMessage: String? = null,
     val connectSuccess: Boolean = false,
+    val availableShares: List<String> = emptyList(), // 连接后发现的共享列表
 )
 
 @HiltViewModel
@@ -34,7 +34,6 @@ class SmbConnectViewModel @Inject constructor(
     val uiState: StateFlow<SmbConnectUiState> = _uiState.asStateFlow()
 
     init {
-        // 加载已保存的服务器
         viewModelScope.launch {
             serverDao.getAllServers().collect { servers ->
                 _uiState.value = _uiState.value.copy(savedServers = servers)
@@ -42,103 +41,82 @@ class SmbConnectViewModel @Inject constructor(
         }
     }
 
-    /** 自动发现局域网 SMB 设备 */
     fun discover() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isScanning = true, discoveredServers = emptyList())
             val result = discovery.discover()
             result.fold(
                 onSuccess = { servers ->
-                    _uiState.value = _uiState.value.copy(
-                        isScanning = false,
-                        discoveredServers = servers,
-                    )
+                    _uiState.value = _uiState.value.copy(isScanning = false, discoveredServers = servers)
                 },
                 onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(
-                        isScanning = false,
-                        errorMessage = "扫描失败: ${e.message}",
-                    )
+                    _uiState.value = _uiState.value.copy(isScanning = false, errorMessage = "扫描失败: ${e.message}")
                 },
             )
         }
     }
 
-    /** 连接到 SMB 服务器 */
     fun connect(ip: String, port: Int, username: String, password: String, shareName: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 connectionState = SmbConnectionState.Connecting,
                 errorMessage = null,
                 connectSuccess = false,
+                availableShares = emptyList(),
             )
 
-            // 保存服务器信息
-            val server = ServerEntity(
-                name = ip,
-                ip = ip,
-                port = port,
-                username = username,
-                password = password,
-                shareName = shareName,
-                autoConnect = true,
+            // 先保存服务器
+            val existing = _uiState.value.savedServers.find { it.ip == ip }
+            val server = existing ?: ServerEntity(
+                name = ip, ip = ip, port = port,
+                username = username, password = password,
+                shareName = shareName, autoConnect = true,
             )
-            val serverId = serverDao.insert(server)
+            val serverId = if (existing != null) existing.id else serverDao.insert(server)
 
-            // 尝试连接
             try {
                 connectionPool.getConnection(
-                    serverId = serverId,
-                    host = ip,
-                    port = port,
-                    username = username,
-                    password = password,
-                    shareName = shareName,
+                    serverId = serverId, host = ip, port = port,
+                    username = username, password = password, shareName = shareName,
                 )
                 serverDao.update(server.copy(id = serverId, lastConnectedAt = System.currentTimeMillis()))
                 _uiState.value = _uiState.value.copy(
                     connectionState = SmbConnectionState.Connected,
                     connectSuccess = true,
                 )
-            } catch (e: Exception) {
-                val errorMsg = when {
-                    e.message?.contains("connect", true) == true -> "无法连接到 NAS，请检查 Wi-Fi 和 NAS 是否在同一网络"
-                    e.message?.contains("auth", true) == true -> "用户名或密码错误"
-                    e.message?.contains("timeout", true) == true -> "连接超时，NAS 可能离线"
-                    else -> "连接失败: ${e.message}"
-                }
-                serverDao.updateConnectionError(serverId, errorMsg)
+            } catch (e: SmbConnectionException) {
+                serverDao.updateConnectionError(serverId, e.message)
                 _uiState.value = _uiState.value.copy(
-                    connectionState = SmbConnectionState.Error(errorMsg),
-                    errorMessage = errorMsg,
+                    connectionState = SmbConnectionState.Error(e.message ?: "连接失败"),
+                    errorMessage = e.message,
+                )
+            } catch (e: Exception) {
+                val msg = "连接失败: ${e.message}"
+                serverDao.updateConnectionError(serverId, msg)
+                _uiState.value = _uiState.value.copy(
+                    connectionState = SmbConnectionState.Error(msg),
+                    errorMessage = msg,
                 )
             }
         }
     }
 
-    /** 连接到自动发现的服务器 */
+    fun connectWithShare(shareName: String) {
+        // 用户从共享列表中选择了共享，重新连接
+        val current = _uiState.value
+        val server = current.savedServers.lastOrNull() ?: return
+        connect(server.ip, server.port, server.username, server.password, shareName)
+    }
+
     fun connectToDiscovered(server: DiscoveredServer) {
-        connect(
-            ip = server.host,
-            port = server.port,
-            username = "",
-            password = "",
-            shareName = "", // 需要用户输入共享名
-        )
+        // 发现的服务器先尝试匿名连接，获取共享列表
+        connect(ip = server.host, port = server.port, username = "", password = "", shareName = "")
     }
 
-    /** 连接到已保存的服务器 */
     fun connectToSaved(server: ServerEntity) {
-        connect(
-            ip = server.ip,
-            port = server.port,
-            username = server.username,
-            password = server.password,
-            shareName = server.shareName,
-        )
+        connect(server.ip, server.port, server.username, server.password, server.shareName)
     }
 
-    /** 删除已保存的服务器 */
     fun deleteServer(server: ServerEntity) {
         viewModelScope.launch {
             connectionPool.disconnect(server.id)
@@ -146,12 +124,10 @@ class SmbConnectViewModel @Inject constructor(
         }
     }
 
-    /** 清除错误信息 */
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
     }
 
-    /** 重置连接成功状态 */
     fun resetConnectSuccess() {
         _uiState.value = _uiState.value.copy(connectSuccess = false)
     }

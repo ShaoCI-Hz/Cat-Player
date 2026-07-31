@@ -20,7 +20,7 @@ object SmbModule {
 
     @Provides
     @Singleton
-    fun provideSmbConnectionPool(smbClient: SmbClientWrapper): SmbConnectionPool {
-        return SmbConnectionPool(smbClient)
+    fun provideSmbConnectionPool(): SmbConnectionPool {
+        return SmbConnectionPool()
     }
 }
