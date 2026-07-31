@@ -3,6 +3,7 @@ package com.hezi.juyumao.player
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.hezi.juyumao.data.local.db.entity.SongEntity
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -28,6 +29,10 @@ class PlaybackStateHolder @Inject constructor() {
 
     @Volatile private var exoPlayer: ExoPlayer? = null
 
+    // 进度轮询协程
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var pollJob: Job? = null
+
     fun getExoPlayer(): ExoPlayer? = exoPlayer
 
     fun bindPlayer(player: ExoPlayer) {
@@ -40,8 +45,34 @@ class PlaybackStateHolder @Inject constructor() {
             }
             override fun onIsPlayingChanged(playing: Boolean) {
                 _isPlaying.value = playing
+                // 播放时启动轮询，暂停时停止
+                if (playing) startPolling() else stopPolling()
             }
         })
+    }
+
+    private fun startPolling() {
+        pollJob?.cancel()
+        pollJob = scope.launch {
+            while (isActive) {
+                exoPlayer?.let {
+                    if (it.isPlaying) {
+                        _position.value = it.currentPosition
+                        _duration.value = it.duration.coerceAtLeast(0)
+                    }
+                }
+                delay(200) // 每 200ms 更新一次，流畅不卡
+            }
+        }
+    }
+
+    private fun stopPolling() {
+        pollJob?.cancel()
+        pollJob = null
+        // 暂停时最后一次同步位置
+        exoPlayer?.let {
+            _position.value = it.currentPosition
+        }
     }
 
     fun updateSong(song: SongEntity?) {
@@ -57,16 +88,17 @@ class PlaybackStateHolder @Inject constructor() {
     }
 
     fun seekTo(positionMs: Long) {
-        exoPlayer?.seekTo(positionMs)
-        _position.value = positionMs
+        exoPlayer?.let {
+            it.seekTo(positionMs)
+            _position.value = positionMs
+        }
     }
 
-    fun pollPosition() {
+    /** 手动同步一次位置（供外部调用） */
+    fun syncPosition() {
         exoPlayer?.let {
-            if (it.isPlaying) {
-                _position.value = it.currentPosition
-                _duration.value = it.duration.coerceAtLeast(0)
-            }
+            _position.value = it.currentPosition
+            _duration.value = it.duration.coerceAtLeast(0)
         }
     }
 }

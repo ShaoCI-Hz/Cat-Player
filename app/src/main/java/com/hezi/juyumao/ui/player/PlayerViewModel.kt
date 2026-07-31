@@ -44,18 +44,17 @@ class PlayerViewModel @Inject constructor(
     private val _lyrics = MutableStateFlow<LyricsData?>(null)
     val lyrics: StateFlow<LyricsData?> = _lyrics
 
+    // 直接从 PlaybackStateHolder 读取，由其内部轮询驱动更新
     val isPlaying: StateFlow<Boolean> = playbackStateHolder.isPlaying
     val position: StateFlow<Long> = playbackStateHolder.position
     val duration: StateFlow<Long> = playbackStateHolder.duration
+
     val lyricsFontSize: StateFlow<Float> = settingsRepository.lyricsFontSize
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 18f)
     val lyricsFontBold: StateFlow<Boolean> = settingsRepository.lyricsFontBold
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
-    /** 取消旧加载任务，防止快速切歌竞态 */
     private var loadJob: Job? = null
-
-    /** 追踪是否已为当前歌曲递增过 playCount */
     private var playCountIncremented = false
 
     init {
@@ -81,13 +80,13 @@ class PlayerViewModel @Inject constructor(
 
     fun loadSong(songId: Long) {
         loadJob?.cancel()
-        playCountIncremented = false // 新歌曲重置标记
+        playCountIncremented = false
         loadJob = viewModelScope.launch {
             val song = songDao.getById(songId) ?: return@launch
             _currentSong.value = song
             playbackStateHolder.updateSong(song)
 
-            // 只更新 lastPlayedAt，playCount 在实际开始播放时才递增
+            // 更新 lastPlayedAt
             songDao.update(song.copy(lastPlayedAt = System.currentTimeMillis()))
 
             // 加载封面

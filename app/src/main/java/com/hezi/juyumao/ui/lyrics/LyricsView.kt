@@ -51,24 +51,22 @@ fun LyricsView(
     // 用户手动滚动时暂停自动滚动，5秒后恢复
     var autoScrollEnabled by remember { mutableStateOf(true) }
 
-    // 监听用户滚动
     LaunchedEffect(listState.isScrollInProgress) {
         if (listState.isScrollInProgress) {
             autoScrollEnabled = false
         } else {
-            // 用户停止滚动 5 秒后恢复自动滚动
             delay(5000)
             autoScrollEnabled = true
         }
     }
 
-    // 自动滚动到当前行（仅在用户未手动滚动时）
+    // 自动滚动到当前行
     LaunchedEffect(currentIndex, autoScrollEnabled) {
         if (currentIndex >= 0 && autoScrollEnabled) {
             coroutineScope.launch {
                 listState.animateScrollToItem(
-                    index = maxOf(0, currentIndex - 4),
-                    scrollOffset = -200,
+                    index = maxOf(0, currentIndex - 3),
+                    scrollOffset = 0,
                 )
             }
         }
@@ -77,92 +75,88 @@ fun LyricsView(
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 200.dp, bottom = 300.dp),
+        contentPadding = PaddingValues(top = 120.dp, bottom = 200.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         itemsIndexed(lyricsData.lines) { index, line ->
             val isCurrent = index == currentIndex
             val distance = kotlin.math.abs(index - currentIndex)
-            val inAnimRange = distance <= 5
 
-            if (inAnimRange) {
-                val alpha by animateFloatAsState(
-                    targetValue = when {
-                        isCurrent -> 1f
-                        distance == 1 -> 0.7f
-                        distance == 2 -> 0.45f
-                        distance == 3 -> 0.25f
-                        else -> 0.12f
-                    },
-                    animationSpec = tween(400),
-                    label = "lyric_alpha",
-                )
-
-                val scale by animateFloatAsState(
-                    targetValue = if (isCurrent) 1.08f else 0.95f,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 200f),
-                    label = "lyric_scale",
-                )
-
-                val offsetY by animateDpAsState(
-                    targetValue = if (isCurrent) (-2).dp else 0.dp,
-                    animationSpec = spring(dampingRatio = 0.5f, stiffness = 300f),
-                    label = "lyric_offset",
-                )
-
-                val animatedFontSize by animateFloatAsState(
-                    targetValue = if (isCurrent) fontSize + 4f else fontSize - 2f,
-                    animationSpec = spring(dampingRatio = 0.7f, stiffness = 250f),
-                    label = "lyric_font_size",
-                )
-
-                val color by animateColorAsState(
-                    targetValue = if (isCurrent) MaterialTheme.colorScheme.primary
-                                  else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha),
-                    animationSpec = tween(400),
-                    label = "lyric_color",
-                )
-
-                Text(
-                    text = line.text,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer {
-                            this.alpha = alpha
-                            this.scaleX = scale
-                            this.scaleY = scale
-                            this.translationY = offsetY.toPx()
-                        }
-                        .clickable(enabled = onLineClick != null) {
-                            onLineClick?.invoke(line.timeMs)
-                        }
-                        .padding(horizontal = 28.dp, vertical = if (isCurrent) 12.dp else 6.dp),
-                    fontSize = animatedFontSize.sp,
-                    fontWeight = if (isCurrent && fontBold) FontWeight.Bold
-                                else if (distance <= 1) FontWeight.Medium
-                                else FontWeight.Normal,
-                    color = color,
-                    textAlign = TextAlign.Center,
-                    lineHeight = (animatedFontSize * 1.5f).sp,
-                )
-            } else {
-                // 动画范围外的行，静态渲染，节省性能
-                Text(
-                    text = line.text,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .alpha(0.12f)
-                        .clickable(enabled = onLineClick != null) {
-                            onLineClick?.invoke(line.timeMs)
-                        }
-                        .padding(horizontal = 28.dp, vertical = 6.dp),
-                    fontSize = (fontSize - 2f).sp,
-                    fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f),
-                    textAlign = TextAlign.Center,
-                    lineHeight = ((fontSize - 2f) * 1.5f).sp,
-                )
+            // 当 currentIndex < 0（尚未播放到任何歌词行）时，所有行正常显示
+            // 当 currentIndex >= 0 时，距离越远越透明
+            val targetAlpha = when {
+                currentIndex < 0 -> 0.6f          // 未开始播放，全部半透明
+                isCurrent -> 1f                    // 当前行完全不透明
+                distance <= 2 -> 0.6f - (distance - 1) * 0.15f  // 相邻行渐变
+                else -> 0.25f                      // 远处行低透明度
             }
+
+            val targetScale = when {
+                currentIndex < 0 -> 1f
+                isCurrent -> 1.08f
+                else -> 0.95f
+            }
+
+            val targetFontSize = when {
+                currentIndex < 0 -> fontSize
+                isCurrent -> fontSize + 4f
+                else -> fontSize - 2f
+            }
+
+            val targetFontWeight = when {
+                currentIndex < 0 -> FontWeight.Normal
+                isCurrent && fontBold -> FontWeight.Bold
+                distance <= 1 -> FontWeight.Medium
+                else -> FontWeight.Normal
+            }
+
+            val alpha by animateFloatAsState(
+                targetValue = targetAlpha,
+                animationSpec = tween(300),
+                label = "lyric_alpha",
+            )
+
+            val scale by animateFloatAsState(
+                targetValue = targetScale,
+                animationSpec = spring(dampingRatio = 0.6f, stiffness = 200f),
+                label = "lyric_scale",
+            )
+
+            val animatedFontSize by animateFloatAsState(
+                targetValue = targetFontSize,
+                animationSpec = spring(dampingRatio = 0.7f, stiffness = 250f),
+                label = "lyric_font_size",
+            )
+
+            val color by animateColorAsState(
+                targetValue = when {
+                    currentIndex < 0 -> MaterialTheme.colorScheme.onSurfaceVariant
+                    isCurrent -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                animationSpec = tween(300),
+                label = "lyric_color",
+            )
+
+            Text(
+                text = line.text,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        this.alpha = alpha
+                        this.scaleX = scale
+                        this.scaleY = scale
+                    }
+                    .clickable(enabled = onLineClick != null && line.timeMs > 0) {
+                        onLineClick?.invoke(line.timeMs)
+                    }
+                    .padding(horizontal = 28.dp, vertical = if (isCurrent) 10.dp else 5.dp),
+                fontSize = animatedFontSize.sp,
+                fontWeight = targetFontWeight,
+                color = color,
+                textAlign = TextAlign.Center,
+                lineHeight = (animatedFontSize * 1.5f).sp,
+            )
         }
     }
 }
