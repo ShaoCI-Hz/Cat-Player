@@ -1,6 +1,7 @@
 package com.hezi.juyumao.data.local.lyrics
 
 import android.content.Context
+import com.hezi.juyumao.data.local.crypto.decryptPassword
 import com.hezi.juyumao.data.local.db.dao.ServerDao
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 import com.hezi.juyumao.data.local.metadata.MetadataExtractor
@@ -39,7 +40,51 @@ class LyricsManager @Inject constructor(
 
     private suspend fun getLyricsSmb(song: SongEntity): LyricsData? {
         findSmbLrc(song)?.let { return it }
+        findSmbEmbeddedLyrics(song)?.let { return it }
         return null
+    }
+
+    private suspend fun findSmbEmbeddedLyrics(song: SongEntity): LyricsData? {
+        try {
+            val serverId = song.smbServerId ?: return null
+            val server = serverDao.getServerById(serverId)?.decryptPassword() ?: return null
+            val client = smbConnectionPool.getConnection(
+                serverId = server.id,
+                host = server.ip,
+                port = server.port,
+                username = server.username,
+                password = server.password,
+                shareName = server.effectiveShareName,
+            )
+
+            val sharePath = song.smbSharePath ?: return null
+            val ext = sharePath.substringAfterLast('.', "").ifBlank { "bin" }
+            // 必须保留原始扩展名，jaudiotagger 按扩展名选择解析器，.tmp 会解析失败读不到歌词
+            val tempFile = File(context.cacheDir, "smb_lyr_${song.id}_${System.currentTimeMillis()}.$ext")
+            try {
+                client.openFile(sharePath).getOrThrow().use { input ->
+                    val output = tempFile.outputStream()
+                    val buffer = ByteArray(64 * 1024)
+                    var total = 0L
+                    val maxRead = 8L * 1024 * 1024
+                    while (total < maxRead) {
+                        val n = input.read(buffer)
+                        if (n < 0) break
+                        output.write(buffer, 0, n)
+                        total += n
+                        if (total >= maxRead) break
+                    }
+                    output.close()
+                }
+                val meta = metadataExtractor.extract(tempFile.absolutePath)
+                val lyricsText = meta.embeddedLyrics ?: return null
+                return parseLyricsContent(lyricsText)
+            } finally {
+                tempFile.delete()
+            }
+        } catch (_: Exception) {
+            return null
+        }
     }
 
     private fun findExternalLrc(filePath: String): LyricsData? {
@@ -70,11 +115,10 @@ class LyricsManager @Inject constructor(
         return parseLyricsContent(lyricsText)
     }
 
-    // CRITICAL-2: 从数据库查找服务器信息，不再传空参数
     private suspend fun findSmbLrc(song: SongEntity): LyricsData? {
         val serverId = song.smbServerId ?: return null
         val sharePath = song.smbSharePath ?: return null
-        val server = serverDao.getServerById(serverId) ?: return null
+        val server = serverDao.getServerById(serverId)?.decryptPassword() ?: return null
 
         try {
             val client = smbConnectionPool.getConnection(
@@ -83,7 +127,7 @@ class LyricsManager @Inject constructor(
                 port = server.port,
                 username = server.username,
                 password = server.password,
-                shareName = server.shareName,
+                shareName = server.effectiveShareName,
             )
             val parentDir = sharePath.substringBeforeLast('/')
             val baseName = sharePath.substringAfterLast('/').substringBeforeLast('.')

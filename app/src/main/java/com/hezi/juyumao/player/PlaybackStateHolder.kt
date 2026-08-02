@@ -3,7 +3,14 @@ package com.hezi.juyumao.player
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.hezi.juyumao.data.local.db.entity.SongEntity
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
@@ -100,5 +107,10 @@ class PlaybackStateHolder @Inject constructor() {
             _position.value = it.currentPosition
             _duration.value = it.duration.coerceAtLeast(0)
         }
+    }
+
+    fun release() {
+        pollJob?.cancel()
+        scope.cancel()
     }
 }

@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
@@ -47,8 +49,19 @@ private fun JuYuMaoAppContent(
     val currentSong by appViewModel.currentSong.collectAsStateWithLifecycle()
     val artworkUri by appViewModel.artworkUri.collectAsStateWithLifecycle()
     val isPlaying by appViewModel.isPlaying.collectAsStateWithLifecycle()
+    val reconnectState by appViewModel.reconnectState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // 自动重连完成提示
+    LaunchedEffect(reconnectState.message) {
+        reconnectState.message?.let { msg ->
+            snackbarHostState.showSnackbar(msg, duration = androidx.compose.material3.SnackbarDuration.Short)
+            appViewModel.clearReconnectMessage()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,

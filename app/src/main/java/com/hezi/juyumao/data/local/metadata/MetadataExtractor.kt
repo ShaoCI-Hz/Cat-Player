@@ -118,9 +118,24 @@ class MetadataExtractor @Inject constructor(
     }
 
     private fun readEmbeddedLyrics(tag: org.jaudiotagger.tag.Tag): String? {
-        // 尝试 LYRICS 标签（覆盖 ID3v2 USLT 和 Vorbis LYRICS）
-        val lyrics = tag.getFirst(FieldKey.LYRICS)
-        if (lyrics.isNotEmpty()) return lyrics
+        // 1. 通用 FieldKey.LYRICS（覆盖 Vorbis LYRICS / MP4 ©lyr / APE Lyrics）
+        try {
+            tag.getFirst(FieldKey.LYRICS).takeIf { it.isNotBlank() }?.let { return it }
+        } catch (_: Exception) {}
+
+        // 2. ID3v2 USLT 帧（MP3 常见）
+        if (tag is org.jaudiotagger.tag.id3.AbstractID3v2Tag) {
+            try {
+                val frame = tag.getFrame("USLT")
+                if (frame is org.jaudiotagger.tag.id3.AbstractTagFrame) {
+                    val body = frame.body
+                    if (body is org.jaudiotagger.tag.id3.framebody.FrameBodyUSLT) {
+                        val lyric: String? = body.toString().takeIf { it.isNotBlank() && it != "Unsyncronised lyrics frame" }
+                        if (lyric != null) return lyric
+                    }
+                }
+            } catch (_: Exception) {}
+        }
         return null
     }
 

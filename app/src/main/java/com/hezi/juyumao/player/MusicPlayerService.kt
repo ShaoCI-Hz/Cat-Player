@@ -22,6 +22,9 @@ class MusicPlayerService : MediaSessionService() {
     @Inject
     lateinit var exoPlayer: ExoPlayer
 
+    @Inject
+    lateinit var playbackStateHolder: PlaybackStateHolder
+
     private var mediaSession: MediaSession? = null
     private var notificationManager: PlayerNotificationManager? = null
 
@@ -63,7 +66,13 @@ class MusicPlayerService : MediaSessionService() {
                     player: Player,
                     callback: PlayerNotificationManager.BitmapCallback,
                 ): android.graphics.Bitmap? {
-                    return null // 后续可加载封面
+                    // 从播放状态读取封面路径（PlaybackStateHolder.artworkUri）
+                    val artPath = playbackStateHolder.artworkUri.value ?: return null
+                    return try {
+                        android.graphics.BitmapFactory.decodeFile(artPath)
+                    } catch (_: Exception) {
+                        null
+                    }
                 }
             })
             .setNotificationListener(object : PlayerNotificationManager.NotificationListener {
@@ -80,7 +89,7 @@ class MusicPlayerService : MediaSessionService() {
 
         notificationManager?.apply {
             setPlayer(exoPlayer)
-            setSmallIcon(android.R.drawable.ic_media_play)
+            setSmallIcon(com.hezi.juyumao.R.mipmap.ic_launcher)
             setUseFastForwardAction(false)
             setUseRewindAction(false)
             setUseNextAction(true)

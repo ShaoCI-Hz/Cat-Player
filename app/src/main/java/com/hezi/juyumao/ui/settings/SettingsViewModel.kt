@@ -25,6 +25,9 @@ class SettingsViewModel @Inject constructor(
     val lyricsFontBold: StateFlow<Boolean> = settingsRepository.lyricsFontBold
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val cacheThreads: StateFlow<Int> = settingsRepository.cacheThreads
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 4)
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }
@@ -35,5 +38,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setLyricsFontBold(bold: Boolean) {
         viewModelScope.launch { settingsRepository.setLyricsFontBold(bold) }
+    }
+
+    fun setCacheThreads(threads: Int) {
+        viewModelScope.launch { settingsRepository.setCacheThreads(threads) }
     }
 }

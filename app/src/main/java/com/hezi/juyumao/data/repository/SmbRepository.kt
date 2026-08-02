@@ -1,13 +1,14 @@
 package com.hezi.juyumao.data.repository
 
+import com.hezi.juyumao.data.local.crypto.decryptPassword
+import com.hezi.juyumao.data.local.crypto.encryptPassword
 import com.hezi.juyumao.data.local.db.dao.ServerDao
 import com.hezi.juyumao.data.local.db.entity.ServerEntity
 import com.hezi.juyumao.data.remote.discovery.DiscoveredServer
 import com.hezi.juyumao.data.remote.discovery.SmbDiscovery
-import com.hezi.juyumao.data.remote.smb.SmbClientWrapper
 import com.hezi.juyumao.data.remote.smb.SmbConnectionPool
-import com.hezi.juyumao.data.remote.smb.SmbConnectionState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -15,25 +16,28 @@ import javax.inject.Singleton
 class SmbRepository @Inject constructor(
     private val serverDao: ServerDao,
     private val connectionPool: SmbConnectionPool,
+    private val discovery: SmbDiscovery,
 ) {
-    private val discovery = SmbDiscovery()
-
-    // CRITICAL-5: 使用正确的 per-server 状态查询
     fun connectionStateFor(serverId: Long) = connectionPool.connectionStateFor(serverId)
 
-    fun getAllServers(): Flow<List<ServerEntity>> = serverDao.getAllServers()
+    fun getAllServers(): Flow<List<ServerEntity>> = serverDao.getAllServers().map { list ->
+        list.map { it.decryptPassword() }
+    }
 
-    fun getAutoConnectServers(): Flow<List<ServerEntity>> = serverDao.getAutoConnectServers()
+    fun getAutoConnectServers(): Flow<List<ServerEntity>> = serverDao.getAutoConnectServers().map { list ->
+        list.map { it.decryptPassword() }
+    }
 
     suspend fun connect(server: ServerEntity): Result<Unit> {
         return try {
+            val decrypted = server.decryptPassword()
             connectionPool.getConnection(
-                serverId = server.id,
-                host = server.ip,
-                port = server.port,
-                username = server.username,
-                password = server.password,
-                shareName = server.shareName,
+                serverId = decrypted.id,
+                host = decrypted.ip,
+                port = decrypted.port,
+                username = decrypted.username,
+                password = decrypted.password,
+                shareName = decrypted.effectiveShareName,
             )
             serverDao.update(server.copy(lastConnectedAt = System.currentTimeMillis()))
             Result.success(Unit)
@@ -43,7 +47,7 @@ class SmbRepository @Inject constructor(
     }
 
     suspend fun saveServer(server: ServerEntity): Long {
-        return serverDao.insert(server)
+        return serverDao.insert(server.encryptPassword())
     }
 
     suspend fun deleteServer(server: ServerEntity) {

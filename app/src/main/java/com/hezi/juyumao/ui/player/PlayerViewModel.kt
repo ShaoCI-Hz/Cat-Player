@@ -82,39 +82,50 @@ class PlayerViewModel @Inject constructor(
         loadJob?.cancel()
         playCountIncremented = false
         loadJob = viewModelScope.launch {
-            val song = songDao.getById(songId) ?: return@launch
-            _currentSong.value = song
-            playbackStateHolder.updateSong(song)
+            var song = songDao.getById(songId) ?: return@launch
 
-            // 更新 lastPlayedAt
-            songDao.update(song.copy(lastPlayedAt = System.currentTimeMillis()))
+            // 判断是否已加载同一首歌且播放器有内容 —— 是则不重播，只刷新 UI
+            val current = playbackStateHolder.currentSong.value
+            val alreadyPlayingThis = current?.id == songId &&
+                (playbackStateHolder.getExoPlayer()?.mediaItemCount ?: 0) > 0
 
-            // 加载封面
-            val artPath = metadataRepository.getCachedArtworkPath(song.id)
+            // 更新 lastPlayedAt（仅首次进入时）
+            if (!alreadyPlayingThis) {
+                songDao.update(song.copy(lastPlayedAt = System.currentTimeMillis()))
+            }
+
+            // 提取完整元数据（歌手/专辑/封面/内嵌歌词标志），SMB 歌曲会下载头部标签
+            val enriched = metadataRepository.extractAndUpdateSong(song)
+            if (enriched != song) {
+                song = enriched
+                songDao.update(enriched)
+                _currentSong.value = enriched
+                playbackStateHolder.updateSong(enriched)
+            } else {
+                _currentSong.value = song
+                playbackStateHolder.updateSong(song)
+            }
+
+            // 封面
+            val artPath = enriched.albumArtUri ?: metadataRepository.getCachedArtworkPath(enriched.id)
             _artworkUri.value = artPath
             playbackStateHolder.updateArtwork(artPath)
 
-            if (artPath == null && song.source == "LOCAL") {
+            // 歌词
+            try {
+                _lyrics.value = metadataRepository.getLyrics(enriched)
+            } catch (_: Exception) {}
+
+            // 只有不是已加载的同一首歌时才重新加载播放，否则保持当前播放状态
+            if (!alreadyPlayingThis) {
+                playbackController.loadPlaylist(listOf(enriched), 0)
+
+                // 启动通知栏服务
                 try {
-                    val newPath = metadataRepository.extractAndCacheArtwork(song)
-                    _artworkUri.value = newPath
-                    playbackStateHolder.updateArtwork(newPath)
+                    val intent = Intent(context, MusicPlayerService::class.java)
+                    ContextCompat.startForegroundService(context, intent)
                 } catch (_: Exception) {}
             }
-
-            // 加载歌词
-            try {
-                _lyrics.value = metadataRepository.getLyrics(song)
-            } catch (_: Exception) {}
-
-            // 通过 PlaybackController 加载并播放
-            playbackController.loadPlaylist(listOf(song), 0)
-
-            // 启动通知栏服务
-            try {
-                val intent = Intent(context, MusicPlayerService::class.java)
-                ContextCompat.startForegroundService(context, intent)
-            } catch (_: Exception) {}
         }
     }
 

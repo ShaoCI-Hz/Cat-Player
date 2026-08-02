@@ -22,6 +22,7 @@ import com.hezi.juyumao.ui.theme.ThemeMode
 fun SettingsScreen(
     onNavigateToSmb: () -> Unit,
     onNavigateToEqualizer: () -> Unit,
+    onNavigateToCache: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -77,6 +78,45 @@ fun SettingsScreen(
                     subtitle = "WiFi 下自动连接已保存的 NAS",
                     onClick = { },
                 )
+            }
+        }
+
+        // Cache section
+        item {
+            val cacheThreads by viewModel.cacheThreads.collectAsStateWithLifecycle()
+            SettingsSection(title = "存储") {
+                SettingsItem(
+                    icon = Icons.Default.Storage,
+                    title = "缓存管理",
+                    subtitle = "管理 NAS 下载、封面、歌词缓存",
+                    onClick = onNavigateToCache,
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Speed, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Text("缓存线程数", style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    var sliderValue by remember { mutableFloatStateOf(cacheThreads.toFloat()) }
+                    LaunchedEffect(cacheThreads) { sliderValue = cacheThreads.toFloat() }
+                    Slider(
+                        value = sliderValue,
+                        onValueChange = { sliderValue = it },
+                        onValueChangeFinished = { viewModel.setCacheThreads(sliderValue.toInt()) },
+                        valueRange = 1f..8f,
+                        modifier = Modifier.width(140.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                    Text("${cacheThreads}", style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
+                }
             }
         }
 

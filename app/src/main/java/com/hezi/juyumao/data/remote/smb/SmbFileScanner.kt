@@ -26,14 +26,11 @@ class SmbFileScanner @Inject constructor() {
         onProgress: (ScanProgress) -> Unit = {},
     ): Result<List<SongEntity>> = withContext(Dispatchers.IO) {
         try {
-            // 重置实例级状态，避免上次扫描残留
-            lastProgressTime = 0L
-            lastProgressCount = -1
             val songs = mutableListOf<SongEntity>()
-            var scannedCount = 0
-            scanRecursive(smbClient, path, serverId, songs, onProgress) { scannedCount = it }
+            val progressState = ScanProgressState()
+            scanRecursive(smbClient, path, serverId, songs, onProgress, progressState)
             onProgress(ScanProgress(
-                scannedFiles = scannedCount,
+                scannedFiles = progressState.totalScanned,
                 foundSongs = songs.size,
                 currentPath = path,
                 isComplete = true,
@@ -45,8 +42,11 @@ class SmbFileScanner @Inject constructor() {
         }
     }
 
-    private var lastProgressTime = 0L
-    private var lastProgressCount = -1
+    private class ScanProgressState {
+        var lastProgressTime = 0L
+        var lastProgressCount = -1
+        var totalScanned = 0
+    }
 
     private suspend fun scanRecursive(
         smbClient: SmbClientWrapper,
@@ -54,7 +54,7 @@ class SmbFileScanner @Inject constructor() {
         serverId: Long,
         result: MutableList<SongEntity>,
         onProgress: (ScanProgress) -> Unit,
-        scannedCountRef: (Int) -> Unit,
+        progressState: ScanProgressState,
     ) {
         val filesResult = smbClient.listFiles(path)
         if (filesResult.isFailure) {
@@ -65,10 +65,11 @@ class SmbFileScanner @Inject constructor() {
         val files = filesResult.getOrNull() ?: return
 
         for (file in files) {
+            progressState.totalScanned++
             if (file.isDirectory) {
                 // 排除系统目录
                 if (!AudioFileFilter.isExcludedPath(file.path)) {
-                    scanRecursive(smbClient, file.path, serverId, result, onProgress, scannedCountRef)
+                    scanRecursive(smbClient, file.path, serverId, result, onProgress, progressState)
                 }
             } else if (AudioFileFilter.isAudioFile(file.name)
                 && !AudioFileFilter.isExcludedPath(file.path)
@@ -93,14 +94,13 @@ class SmbFileScanner @Inject constructor() {
                     )
                 )
             }
-            scannedCountRef(result.size)
             // 节流：每 50 个文件或 500ms 调用一次
             val now = System.currentTimeMillis()
-            if (result.size - lastProgressCount >= 50 || now - lastProgressTime >= 500) {
-                lastProgressCount = result.size
-                lastProgressTime = now
+            if (progressState.totalScanned - progressState.lastProgressCount >= 50 || now - progressState.lastProgressTime >= 500) {
+                progressState.lastProgressCount = progressState.totalScanned
+                progressState.lastProgressTime = now
                 onProgress(ScanProgress(
-                    scannedFiles = result.size,
+                    scannedFiles = progressState.totalScanned,
                     foundSongs = result.size,
                     currentPath = file.path,
                 ))

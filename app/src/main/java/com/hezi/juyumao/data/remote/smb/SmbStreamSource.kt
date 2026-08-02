@@ -3,7 +3,6 @@ package com.hezi.juyumao.data.remote.smb
 import android.net.Uri
 import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSpec
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import java.io.InputStream
 
@@ -16,7 +15,8 @@ class SmbStreamSource(
     private var bytesRemaining: Long = 0
 
     override fun open(dataSpec: DataSpec): Long {
-        val result = runBlocking(Dispatchers.IO) {
+        // ExoPlayer 调用线程已非主线程，runBlocking 不会 ANR
+        val result = runBlocking {
             smbClient.openFile(filePath)
         }
         inputStream = result.getOrNull()
@@ -54,5 +54,5 @@ class SmbStreamSource(
         inputStream = null
     }
 
-    override fun getUri(): Uri? = null
+    override fun getUri(): Uri? = Uri.parse("smb://$filePath")
 }

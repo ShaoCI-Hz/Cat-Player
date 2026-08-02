@@ -26,6 +26,7 @@ fun BrowseScreen(
     viewModel: BrowseViewModel = hiltViewModel(),
 ) {
     val allSongs by viewModel.allSongs.collectAsStateWithLifecycle()
+    val batchState by viewModel.batchCacheState.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("全部", "本地", "NAS")
 
@@ -81,6 +82,38 @@ fun BrowseScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // 批量缓存进度条
+        if (batchState.isRunning) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "正在缓存歌曲元数据... (${batchState.processed}/${batchState.total})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    if (batchState.currentSongTitle.isNotEmpty()) {
+                        Text(
+                            text = batchState.currentSongTitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    LinearProgressIndicator(
+                        progress = { batchState.progress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+
         if (filteredSongs.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -116,6 +149,8 @@ fun BrowseScreen(
                     SongListItem(
                         song = song,
                         onClick = { onSongClick(song.id) },
+                        onEnsureArtwork = { viewModel.ensureArtwork(song) },
+                        isProcessing = batchState.isRunning && batchState.currentSongId == song.id,
                     )
                 }
             }
@@ -127,7 +162,14 @@ fun BrowseScreen(
 private fun SongListItem(
     song: SongEntity,
     onClick: () -> Unit,
+    onEnsureArtwork: () -> Unit = {},
+    isProcessing: Boolean = false,
 ) {
+    // 列表项显示时按需提取 NAS 封面
+    LaunchedEffect(song.id, song.albumArtUri) {
+        if (song.albumArtUri.isNullOrEmpty()) onEnsureArtwork()
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -208,12 +250,20 @@ private fun SongListItem(
             }
         }
 
-        // 时长
-        Text(
-            text = formatDuration(song.duration),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        // 时长或处理中指示
+        if (isProcessing) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Text("缓存中", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            Text(
+                text = formatDuration(song.duration),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

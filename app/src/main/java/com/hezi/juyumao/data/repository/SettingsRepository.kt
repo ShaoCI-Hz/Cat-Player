@@ -25,6 +25,7 @@ class SettingsRepository @Inject constructor(
     val gaplessPlayback: Flow<Boolean> = settingsDataStore.gaplessPlayback
     val lyricsFontSize: Flow<Float> = settingsDataStore.lyricsFontSize
     val lyricsFontBold: Flow<Boolean> = settingsDataStore.lyricsFontBold
+    val cacheThreads: Flow<Int> = settingsDataStore.cacheThreads
 
     suspend fun setThemeMode(mode: ThemeMode) {
         settingsDataStore.setThemeMode(
@@ -42,4 +43,5 @@ class SettingsRepository @Inject constructor(
     suspend fun setGaplessPlayback(enabled: Boolean) = settingsDataStore.setGaplessPlayback(enabled)
     suspend fun setLyricsFontSize(size: Float) = settingsDataStore.setLyricsFontSize(size)
     suspend fun setLyricsFontBold(bold: Boolean) = settingsDataStore.setLyricsFontBold(bold)
+    suspend fun setCacheThreads(threads: Int) = settingsDataStore.setCacheThreads(threads)
 }

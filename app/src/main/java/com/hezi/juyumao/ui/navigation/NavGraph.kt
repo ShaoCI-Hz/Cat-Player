@@ -9,6 +9,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.hezi.juyumao.ui.cache.CacheScreen
 import com.hezi.juyumao.ui.equalizer.EqualizerScreen
 import com.hezi.juyumao.ui.home.HomeScreen
 import com.hezi.juyumao.ui.player.PlayerScreen
@@ -69,6 +70,7 @@ fun JuYuMaoNavGraph(
             SettingsScreen(
                 onNavigateToSmb = { navController.navigate(Screen.SmbConnect.route) },
                 onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
+                onNavigateToCache = { navController.navigate(Screen.Cache.route) },
             )
         }
         // 播放器页面：接收 songId 参数
@@ -90,6 +92,9 @@ fun JuYuMaoNavGraph(
         }
         composable(Screen.Equalizer.route) {
             EqualizerScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.Cache.route) {
+            CacheScreen(onBack = { navController.popBackStack() })
         }
     }
 }

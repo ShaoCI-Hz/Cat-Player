@@ -1,11 +1,19 @@
 package com.hezi.juyumao.data.repository
 
+import android.content.Context
 import com.hezi.juyumao.data.local.artwork.ArtworkCache
+import com.hezi.juyumao.data.local.crypto.decryptPassword
+import com.hezi.juyumao.data.local.db.dao.ServerDao
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 import com.hezi.juyumao.data.local.lyrics.LyricsManager
 import com.hezi.juyumao.data.local.metadata.AudioMetadata
 import com.hezi.juyumao.data.local.metadata.MetadataExtractor
+import com.hezi.juyumao.data.remote.smb.SmbConnectionPool
 import com.hezi.juyumao.player.audio.LyricsData
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,10 +22,14 @@ import javax.inject.Singleton
  */
 @Singleton
 class MetadataRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val metadataExtractor: MetadataExtractor,
     private val lyricsManager: LyricsManager,
     private val artworkCache: ArtworkCache,
+    private val smbConnectionPool: SmbConnectionPool,
+    private val serverDao: ServerDao,
 ) {
+
     /**
      * 提取并缓存封面，返回缓存路径
      */
@@ -27,7 +39,7 @@ class MetadataRepository @Inject constructor(
 
         // 提取元数据
         val meta = try {
-            metadataExtractor.extract(song.filePath)
+            extractMetadataForSong(song)
         } catch (_: Exception) {
             return null
         }
@@ -56,5 +68,117 @@ class MetadataRepository @Inject constructor(
      */
     fun getCachedArtworkPath(songId: Long): String? {
         return artworkCache.getArtworkPath(songId)
+    }
+
+    /**
+     * 提取完整元数据并更新 SongEntity（歌手/专辑/歌词标志/封面）
+     * 返回更新后的实体，供 UI 刷新显示
+     */
+    suspend fun extractAndUpdateSong(song: SongEntity): SongEntity = extractAndUpdateSong(song, null)
+
+    /**
+     * 提取完整元数据并更新 SongEntity（支持外部 SMB 连接，批量缓存用）
+     */
+    suspend fun extractAndUpdateSong(
+        song: SongEntity,
+        client: com.hezi.juyumao.data.remote.smb.SmbClientWrapper?,
+    ): SongEntity = withContext(Dispatchers.IO) {
+        try {
+            val meta = extractMetadataForSong(song, client)
+            // 缓存封面
+            var artPath = artworkCache.getArtworkPath(song.id)
+            val artData = meta.artworkData
+            if (artPath == null && artData != null && artData.isNotEmpty()) {
+                artPath = artworkCache.saveArtwork(song.id, artData)
+            }
+            song.copy(
+                title = meta.title ?: song.title,
+                artist = meta.artist ?: song.artist,
+                album = meta.album ?: song.album,
+                albumArtist = meta.albumArtist,
+                albumArtUri = artPath ?: song.albumArtUri,
+                trackNumber = meta.trackNumber ?: song.trackNumber,
+                discNumber = meta.discNumber ?: song.discNumber,
+                year = meta.year ?: song.year,
+                genre = meta.genre,
+                composer = meta.composer,
+                bitrate = if (meta.bitrate > 0) meta.bitrate else song.bitrate,
+                sampleRate = if (meta.sampleRate > 0) meta.sampleRate else song.sampleRate,
+                bitsPerSample = if (meta.bitsPerSample > 0) meta.bitsPerSample else song.bitsPerSample,
+                hasEmbeddedLyrics = meta.embeddedLyrics != null || song.hasEmbeddedLyrics,
+                duration = if (meta.duration > 0) meta.duration else song.duration,
+            )
+        } catch (e: Exception) {
+            song
+        }
+    }
+
+    /**
+     * 根据歌曲来源提取元数据
+     * LOCAL: 直接读本地文件
+     * SMB: 下载到临时文件后解析（读取前 1MB 足够提取标签）
+     */
+    suspend fun extractMetadataForSong(song: SongEntity): AudioMetadata = withContext(Dispatchers.IO) {
+        if (song.source == "SMB" && song.smbServerId != null && song.smbSharePath != null) {
+            extractSmbMetadata(song, null)
+        } else {
+            metadataExtractor.extract(song.filePath)
+        }
+    }
+
+    /**
+     * 使用外部提供的 SMB 连接提取元数据（用于批量缓存多线程场景）
+     * @param client 外部传入的连接，为 null 时自动从连接池获取
+     */
+    suspend fun extractMetadataForSong(song: SongEntity, client: com.hezi.juyumao.data.remote.smb.SmbClientWrapper?): AudioMetadata = withContext(Dispatchers.IO) {
+        if (song.source == "SMB" && song.smbServerId != null && song.smbSharePath != null) {
+            extractSmbMetadata(song, client)
+        } else {
+            metadataExtractor.extract(song.filePath)
+        }
+    }
+
+    private suspend fun extractSmbMetadata(
+        song: SongEntity,
+        externalClient: com.hezi.juyumao.data.remote.smb.SmbClientWrapper?,
+    ): AudioMetadata {
+        val serverId = song.smbServerId ?: throw IllegalStateException("无服务器 ID")
+        val server = serverDao.getServerById(serverId)?.decryptPassword()
+            ?: throw IllegalStateException("服务器不存在")
+
+        // 优先使用外部传入的连接（批量缓存多线程场景），否则从连接池获取
+        val client = externalClient ?: smbConnectionPool.getConnection(
+            serverId = server.id,
+            host = server.ip,
+            port = server.port,
+            username = server.username,
+            password = server.password,
+            shareName = server.effectiveShareName,
+        )
+
+        val sharePath = song.smbSharePath ?: throw IllegalStateException("无共享路径")
+        val ext = sharePath.substringAfterLast('.', "").ifBlank { "bin" }
+        // 必须保留原始扩展名，jaudiotagger 按扩展名选择解析器，.tmp 会导致解析失败回退 Retriever（读不到歌词）
+        val tempFile = File(context.cacheDir, "smb_meta_${song.id}_${System.currentTimeMillis()}.$ext")
+        try {
+            client.openFile(sharePath).getOrThrow().use { input ->
+                // 读取前 8MB：确保覆盖 ID3v2/FLAC 头部标签（大封面 + 内嵌歌词）
+                val output = tempFile.outputStream()
+                val buffer = ByteArray(64 * 1024)
+                var total = 0L
+                val maxRead = 8L * 1024 * 1024
+                while (total < maxRead) {
+                    val n = input.read(buffer)
+                    if (n < 0) break
+                    output.write(buffer, 0, n)
+                    total += n
+                    if (total >= maxRead) break
+                }
+                output.close()
+            }
+            return metadataExtractor.extract(tempFile.absolutePath)
+        } finally {
+            tempFile.delete()
+        }
     }
 }

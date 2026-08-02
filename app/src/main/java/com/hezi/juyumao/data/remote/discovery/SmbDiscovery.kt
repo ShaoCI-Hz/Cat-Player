@@ -6,7 +6,9 @@ import kotlinx.coroutines.withContext
 import javax.jmdns.JmDNS
 import javax.jmdns.ServiceEvent
 import javax.jmdns.ServiceListener
+import java.net.Inet4Address
 import java.net.InetAddress
+import java.net.NetworkInterface
 import java.util.concurrent.CopyOnWriteArrayList
 
 data class DiscoveredServer(
@@ -21,14 +23,31 @@ class SmbDiscovery @javax.inject.Inject constructor() {
     @Volatile private var jmdns: JmDNS? = null
     @Volatile private var listener: ServiceListener? = null
 
+    private fun getLocalIpAddress(): InetAddress {
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces()
+            while (interfaces.hasMoreElements()) {
+                val networkInterface = interfaces.nextElement()
+                if (networkInterface.isLoopback || !networkInterface.isUp) continue
+                val addresses = networkInterface.inetAddresses
+                while (addresses.hasMoreElements()) {
+                    val address = addresses.nextElement()
+                    if (address is Inet4Address && !address.isLoopbackAddress) {
+                        return address
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        return InetAddress.getByName("127.0.0.1")
+    }
+
     suspend fun discover(timeoutMs: Long = 5000): Result<List<DiscoveredServer>> =
         withContext(Dispatchers.IO) {
             try {
-                // 线程安全列表，回调中可能并发写入
                 val servers = CopyOnWriteArrayList<DiscoveredServer>()
 
                 synchronized(this@SmbDiscovery) {
-                    jmdns = JmDNS.create(InetAddress.getLocalHost())
+                    jmdns = JmDNS.create(getLocalIpAddress())
                     listener = object : ServiceListener {
                         override fun serviceAdded(event: ServiceEvent) {
                             synchronized(this@SmbDiscovery) {

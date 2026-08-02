@@ -1,20 +1,63 @@
 package com.hezi.juyumao.ui.browse
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hezi.juyumao.data.local.db.dao.SongDao
 import com.hezi.juyumao.data.local.db.entity.SongEntity
+import com.hezi.juyumao.data.local.metadata.BatchCacheState
+import com.hezi.juyumao.data.local.metadata.MetadataBatchProcessor
+import com.hezi.juyumao.data.repository.MetadataRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class BrowseViewModel @Inject constructor(
-    songDao: SongDao,
+    private val songDao: SongDao,
+    private val metadataRepository: MetadataRepository,
+    private val metadataBatchProcessor: MetadataBatchProcessor,
 ) : ViewModel() {
 
     val allSongs: StateFlow<List<SongEntity>> = songDao.getAllSongs()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** 批量缓存进度 */
+    val batchCacheState: StateFlow<BatchCacheState> = metadataBatchProcessor.state
+
+    /** 正在提取封面的 songId 集合（避免并发重复），失败后允许重试 */
+    private val artworkInFlight = MutableStateFlow<Set<Long>>(emptySet())
+
+    /**
+     * 按需提取 NAS 歌曲封面（列表项显示时调用一次）
+     * 成功后更新数据库，下次直接从缓存加载
+     */
+    fun ensureArtwork(song: SongEntity) {
+        // 已有封面或正在提取，跳过
+        if (!song.albumArtUri.isNullOrEmpty()) return
+        if (song.source != "SMB") return
+        if (song.id in artworkInFlight.value) return
+
+        artworkInFlight.value = artworkInFlight.value + song.id
+
+        viewModelScope.launch {
+            try {
+                val path = metadataRepository.extractAndCacheArtwork(song)
+                if (path != null) {
+                    songDao.update(song.copy(albumArtUri = path))
+                    Log.d("BrowseVM", "封面已提取: ${song.title}")
+                } else {
+                    Log.w("BrowseVM", "封面提取无结果: ${song.title}")
+                }
+            } catch (e: Exception) {
+                Log.e("BrowseVM", "封面提取失败: ${song.title}", e)
+            } finally {
+                artworkInFlight.value = artworkInFlight.value - song.id
+            }
+        }
+    }
 }

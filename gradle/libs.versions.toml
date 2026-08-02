@@ -16,6 +16,7 @@ datastore = "1.1.1"
 paging = "3.3.5"
 glance = "1.1.1"
 smbj = "0.13.0"
+jcifsng = "2.1.9"
 jmDNS = "3.6.3"
 accompanist = "0.36.0"
 jaudiotagger = "3.0.1"
@@ -80,6 +81,7 @@ glance-material3 = { group = "androidx.glance", name = "glance-material3", versi
 
 # SMB
 smbj = { group = "com.hierynomus", name = "smbj", version.ref = "smbj" }
+jcifsng = { group = "eu.agno3.jcifs", name = "jcifs-ng", version.ref = "jcifsng" }
 
 # mDNS
 jmdns = { group = "org.jmdns", name = "jmdns", version.ref = "jmDNS" }

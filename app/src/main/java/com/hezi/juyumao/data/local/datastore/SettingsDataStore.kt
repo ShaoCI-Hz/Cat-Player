@@ -19,6 +19,7 @@ class SettingsDataStore(private val context: Context) {
         private val GAPLESS_PLAYBACK = booleanPreferencesKey("gapless_playback")
         private val LYRICS_FONT_SIZE = floatPreferencesKey("lyrics_font_size")
         private val LYRICS_FONT_BOLD = booleanPreferencesKey("lyrics_font_bold")
+        private val CACHE_THREADS = intPreferencesKey("cache_threads")
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "dark" }
@@ -28,6 +29,7 @@ class SettingsDataStore(private val context: Context) {
     val gaplessPlayback: Flow<Boolean> = context.dataStore.data.map { it[GAPLESS_PLAYBACK] ?: false }
     val lyricsFontSize: Flow<Float> = context.dataStore.data.map { it[LYRICS_FONT_SIZE] ?: 18f }
     val lyricsFontBold: Flow<Boolean> = context.dataStore.data.map { it[LYRICS_FONT_BOLD] ?: true }
+    val cacheThreads: Flow<Int> = context.dataStore.data.map { it[CACHE_THREADS] ?: 4 }
 
     suspend fun setThemeMode(mode: String) {
         context.dataStore.edit { it[THEME_MODE] = mode }
@@ -55,5 +57,9 @@ class SettingsDataStore(private val context: Context) {
 
     suspend fun setLyricsFontBold(bold: Boolean) {
         context.dataStore.edit { it[LYRICS_FONT_BOLD] = bold }
+    }
+
+    suspend fun setCacheThreads(threads: Int) {
+        context.dataStore.edit { it[CACHE_THREADS] = threads }
     }
 }

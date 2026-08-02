@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -126,7 +127,7 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 QuickActionCard(Icons.Default.Equalizer, "均衡器", onNavigateToEqualizer, Modifier.weight(1f))
                 QuickActionCard(Icons.Default.Timer, "定时关闭", { showSleepTimer = true }, Modifier.weight(1f))
-                QuickActionCard(Icons.Default.QueueMusic, "播放队列", onNavigateToQueue, Modifier.weight(1f))
+                QuickActionCard(Icons.AutoMirrored.Filled.QueueMusic, "播放队列", onNavigateToQueue, Modifier.weight(1f))
             }
         }
 

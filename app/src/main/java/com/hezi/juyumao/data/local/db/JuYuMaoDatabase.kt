@@ -49,7 +49,8 @@ abstract class JuYuMaoDatabase : RoomDatabase() {
                 "juyumao.db",
             )
                 .addMigrations(MIGRATION_1_2)
-                .fallbackToDestructiveMigration()
+                // 注意：不要使用 fallbackToDestructiveMigration()，它会在 schema 变更时静默销毁用户数据
+                // 新增版本时必须提供 Migration
                 .build()
         }
     }

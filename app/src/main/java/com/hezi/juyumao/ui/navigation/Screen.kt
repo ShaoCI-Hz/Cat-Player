@@ -22,6 +22,7 @@ sealed class Screen(val route: String) {
     data object Queue : Screen("queue")
     data object SmbConnect : Screen("smb_connect")
     data object Equalizer : Screen("equalizer")
+    data object Cache : Screen("cache")
 }
 
 data class BottomNavItem(

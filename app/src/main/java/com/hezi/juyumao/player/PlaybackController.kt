@@ -4,10 +4,17 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.ExoPlayer
+import com.hezi.juyumao.data.local.crypto.decryptPassword
+import com.hezi.juyumao.data.local.db.dao.ServerDao
 import com.hezi.juyumao.data.local.db.entity.SongEntity
+import com.hezi.juyumao.data.remote.smb.SmbConnectionPool
 import com.hezi.juyumao.domain.model.RepeatMode
 import com.hezi.juyumao.domain.model.Song
 import com.hezi.juyumao.domain.model.SongSource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -15,8 +22,11 @@ import javax.inject.Singleton
 class PlaybackController @Inject constructor(
     private val exoPlayer: ExoPlayer,
     private val playbackStateHolder: PlaybackStateHolder,
+    private val smbConnectionPool: SmbConnectionPool,
+    private val serverDao: ServerDao,
 ) {
     private val queue = PlaybackQueue()
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     /** 当前播放模式：0=OFF, 1=ALL, 2=ONE */
     private var repeatModeIndex: Int = 0
@@ -36,7 +46,7 @@ class PlaybackController @Inject constructor(
     fun loadPlaylist(songs: List<SongEntity>, startIndex: Int = 0) {
         val domainSongs = songs.map { it.toDomain() }
         queue.setQueue(domainSongs, startIndex)
-        playCurrent()
+        scope.launch { playCurrent() }
     }
 
     fun play() {
@@ -55,12 +65,12 @@ class PlaybackController @Inject constructor(
 
     fun next() {
         val song = queue.next(repeatMode, shuffleEnabled) ?: return
-        playCurrent()
+        scope.launch { playCurrent() }
     }
 
     fun previous() {
         val song = queue.previous(repeatMode) ?: return
-        playCurrent()
+        scope.launch { playCurrent() }
     }
 
     fun seekTo(positionMs: Long) {
@@ -81,25 +91,50 @@ class PlaybackController @Inject constructor(
 
     // ── 内部 ──
 
-    private fun playCurrent() {
+    private suspend fun playCurrent() {
         val song = queue.currentSong() ?: return
-        val domain = song
         val artPath = playbackStateHolder.artworkUri.value
 
+        val metadata = MediaMetadata.Builder()
+            .setTitle(song.title)
+            .setArtist(song.artist)
+            .setAlbumTitle(song.album)
+            .also { builder ->
+                if (artPath != null) {
+                    builder.setArtworkUri(Uri.parse("file://$artPath"))
+                }
+            }
+            .build()
+
+        if (song.source == SongSource.SMB && song.smbServerId != null && song.smbSharePath != null) {
+            // SMB 歌曲：使用 SmbMediaSource（metadata 在 MediaSource 内，避免 setMediaItem 被覆盖）
+            val server = serverDao.getServerById(song.smbServerId)?.decryptPassword()
+            if (server != null) {
+                try {
+                    val smbClient = smbConnectionPool.getConnection(
+                        serverId = server.id,
+                        host = server.ip,
+                        port = server.port,
+                        username = server.username,
+                        password = server.password,
+                        shareName = server.effectiveShareName,
+                    )
+                    val mediaSource = createSmbMediaSource(smbClient, song.smbSharePath, song.mimeType, metadata)
+                    exoPlayer.setMediaSource(mediaSource)
+                    exoPlayer.prepare()
+                    exoPlayer.playWhenReady = true
+                    playbackStateHolder.updatePlaying(true)
+                    return
+                } catch (_: Exception) {
+                    // SMB 连接失败，跳过
+                }
+            }
+        }
+
+        // 本地歌曲或 SMB 失败回退
         val mediaItem = MediaItem.Builder()
-            .setUri(domain.filePath)
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(domain.title)
-                    .setArtist(domain.artist)
-                    .setAlbumTitle(domain.album)
-                    .also { builder ->
-                        if (artPath != null) {
-                            builder.setArtworkUri(Uri.parse("file://$artPath"))
-                        }
-                    }
-                    .build()
-            )
+            .setUri(song.filePath)
+            .setMediaMetadata(metadata)
             .build()
 
         exoPlayer.setMediaItem(mediaItem)
