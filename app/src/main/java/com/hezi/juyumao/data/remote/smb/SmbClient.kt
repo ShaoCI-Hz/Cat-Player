@@ -158,21 +158,18 @@ class SmbClientWrapper @Inject constructor() {
         }
     }
 
-    fun isConnected(): Boolean = synchronized(this) {
-        share != null && connection?.isConnected == true
-    }
+    // share/connection 是 @Volatile，直接读即可，避免与 connect 的 Mutex 交叉死锁
+    fun isConnected(): Boolean = share != null && connection?.isConnected == true
 
     fun disconnect() {
-        synchronized(this) {
-            try { share?.close() } catch (_: Exception) {}
-            try { session?.close() } catch (_: Exception) {}
-            try { connection?.close() } catch (_: Exception) {}
-            try { client?.close() } catch (_: Exception) {}
-            share = null
-            session = null
-            connection = null
-            client = null
-        }
+        try { share?.close() } catch (_: Exception) {}
+        try { session?.close() } catch (_: Exception) {}
+        try { connection?.close() } catch (_: Exception) {}
+        try { client?.close() } catch (_: Exception) {}
+        share = null
+        session = null
+        connection = null
+        client = null
     }
 }
 

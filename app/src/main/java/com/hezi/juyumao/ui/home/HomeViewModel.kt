@@ -34,6 +34,7 @@ data class HomeUiState(
     val scanMessage: String = "",
     val recentlyPlayed: List<SongEntity> = emptyList(),
     val dailyCard: DailyCardData = generateDailyCard(),
+    val nasConnected: Boolean = false,
 )
 
 @HiltViewModel
@@ -44,6 +45,8 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState
+
+    private var lastWeatherFetchDay: Long = -1
 
     init {
         viewModelScope.launch {
@@ -58,6 +61,14 @@ class HomeViewModel @Inject constructor(
                     albumCount = albums, artistCount = artists,
                 )
             }.collect { _uiState.value = it }
+        }
+        // 周期性刷新 NAS 连接状态（连接池是内存态，无法用 Flow 监听）
+        viewModelScope.launch {
+            while (true) {
+                val connected = smbRepository.isAnyConnected()
+                _uiState.value = _uiState.value.copy(nasConnected = connected)
+                kotlinx.coroutines.delay(3000)
+            }
         }
         viewModelScope.launch {
             musicRepository.getRecentlyPlayed().collect { songs ->
@@ -84,6 +95,10 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun refreshWeather() {
+        // 节流：同一天只请求一次（进程生命周期内）
+        val today = LocalDateTime.now().toLocalDate().toEpochDay()
+        if (lastWeatherFetchDay == today) return
+        lastWeatherFetchDay = today
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 // 用 3 行纯文本格式，避免编码问题

@@ -48,7 +48,7 @@ fun LyricsView(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
-    // 用户手动滚动时暂停自动滚动，5秒后恢复
+    // 用户手动滚动时暂停自动滚动，5秒无操作后恢复
     var autoScrollEnabled by remember { mutableStateOf(true) }
 
     LaunchedEffect(listState.isScrollInProgress) {
@@ -60,15 +60,13 @@ fun LyricsView(
         }
     }
 
-    // 自动滚动到当前行
+    // 自动滚动到当前行（仅当用户未手动滚动时；动画不打断用户操作）
     LaunchedEffect(currentIndex, autoScrollEnabled) {
-        if (currentIndex >= 0 && autoScrollEnabled) {
-            coroutineScope.launch {
-                listState.animateScrollToItem(
-                    index = maxOf(0, currentIndex - 3),
-                    scrollOffset = 0,
-                )
-            }
+        if (currentIndex >= 0 && autoScrollEnabled && !listState.isScrollInProgress) {
+            listState.animateScrollToItem(
+                index = maxOf(0, currentIndex - 3),
+                scrollOffset = 0,
+            )
         }
     }
 

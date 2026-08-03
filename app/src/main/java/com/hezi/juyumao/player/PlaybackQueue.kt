@@ -53,13 +53,21 @@ class PlaybackQueue {
                 }
             }
             RepeatMode.OFF -> {
-                val next = _currentIndex.value + 1
-                if (next >= songs.size) return null
                 if (shuffle) {
-                    val shuffleIdx = _shuffleOrder.value.indexOf(_currentIndex.value)
-                    if (shuffleIdx == -1 || shuffleIdx + 1 >= songs.size) return null
+                    var shuffleIdx = _shuffleOrder.value.indexOf(_currentIndex.value)
+                    if (shuffleIdx == -1) {
+                        // 索引失效时重建
+                        _shuffleOrder.value = songs.indices.shuffled()
+                        shuffleIdx = _shuffleOrder.value.indexOf(_currentIndex.value)
+                        if (shuffleIdx == -1) shuffleIdx = 0
+                    }
+                    if (shuffleIdx + 1 >= songs.size) return null
                     _shuffleOrder.value[shuffleIdx + 1]
-                } else next
+                } else {
+                    val next = _currentIndex.value + 1
+                    if (next >= songs.size) return null
+                    next
+                }
             }
         }
 
@@ -91,15 +99,26 @@ class PlaybackQueue {
         return currentSong()
     }
 
+    fun playAt(index: Int) {
+        if (index in _songs.value.indices) {
+            _currentIndex.value = index
+        }
+    }
+
     fun remove(index: Int) {
         val songs = _songs.value.toMutableList()
         if (index !in songs.indices) return
+        val removingCurrent = index == _currentIndex.value
+        val wasBeforeCurrent = index < _currentIndex.value
         songs.removeAt(index)
         _songs.value = songs
-        // 修复: 删除后重建 shuffle 索引
+        // 删除后重建 shuffle 索引
         _shuffleOrder.value = songs.indices.shuffled()
-        if (_currentIndex.value >= songs.size) {
-            _currentIndex.value = maxOf(0, songs.size - 1)
+        _currentIndex.value = when {
+            songs.isEmpty() -> -1
+            removingCurrent -> maxOf(0, index.coerceAtMost(songs.size - 1))
+            wasBeforeCurrent -> (_currentIndex.value - 1).coerceIn(0, songs.size - 1)
+            else -> _currentIndex.value.coerceIn(0, songs.size - 1)
         }
     }
 

@@ -19,6 +19,7 @@ import com.hezi.juyumao.ui.player.components.*
 @Composable
 fun PlayerScreen(
     onBack: () -> Unit,
+    onOpenQueue: () -> Unit = {},
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val currentSong by viewModel.currentSong.collectAsStateWithLifecycle()
@@ -154,7 +155,7 @@ fun PlayerScreen(
                     showLyrics = showLyrics,
                     isFavorite = isFavorite,
                     onLyricsClick = { showLyrics = !showLyrics },
-                    onQueueClick = { },
+                    onQueueClick = onOpenQueue,
                     onFavoriteClick = { isFavorite = !isFavorite },
                     onMoreClick = { },
                 )

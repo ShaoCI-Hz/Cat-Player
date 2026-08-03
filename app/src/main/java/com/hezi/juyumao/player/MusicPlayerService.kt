@@ -69,7 +69,15 @@ class MusicPlayerService : MediaSessionService() {
                     // 从播放状态读取封面路径（PlaybackStateHolder.artworkUri）
                     val artPath = playbackStateHolder.artworkUri.value ?: return null
                     return try {
-                        android.graphics.BitmapFactory.decodeFile(artPath)
+                        // 采样解码：限制到 ~512px，避免全尺寸大图 OOM
+                        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        android.graphics.BitmapFactory.decodeFile(artPath, bounds)
+                        var sample = 1
+                        while (bounds.outWidth / sample > 512 || bounds.outHeight / sample > 512) {
+                            sample *= 2
+                        }
+                        val opts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+                        android.graphics.BitmapFactory.decodeFile(artPath, opts)
                     } catch (_: Exception) {
                         null
                     }
@@ -117,7 +125,8 @@ class MusicPlayerService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val player = mediaSession?.player
-        if (player == null || !player.playWhenReady || player.mediaItemCount == 0) {
+        // 仅在未播放时停止；播放中保留前台服务继续播放
+        if (player == null || player.mediaItemCount == 0) {
             stopSelf()
         }
     }

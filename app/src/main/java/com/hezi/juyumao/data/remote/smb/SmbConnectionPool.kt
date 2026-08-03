@@ -84,6 +84,9 @@ class SmbConnectionPool @Inject constructor() {
         return connections[serverId]?.takeIf { it.client.isConnected() }?.client
     }
 
+    /** 是否有任一活跃连接 */
+    fun isAnyConnected(): Boolean = connections.values.any { it.client.isConnected() }
+
     fun disconnect(serverId: Long) {
         connections.remove(serverId)?.client?.disconnect()
         _connectionStates[serverId]?.value = SmbConnectionState.Disconnected

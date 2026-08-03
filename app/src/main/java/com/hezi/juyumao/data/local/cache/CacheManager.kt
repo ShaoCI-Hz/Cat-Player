@@ -93,14 +93,27 @@ class CacheManager @Inject constructor(
         } ?: emptyList()
     }
 
-    /** 下载 NAS 歌曲到本地缓存 */
+    /** 下载 NAS 歌曲到本地缓存（带总大小限制） */
     fun saveNasSong(songId: Long, fileName: String, data: java.io.InputStream): File {
         val safeName = fileName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
         val file = File(nasDownloadDir, "song_${songId}_$safeName")
         file.outputStream().use { out ->
             data.copyTo(out, bufferSize = 64 * 1024)
         }
+        // 超过上限时清理最旧的缓存
+        enforceNasLimit()
         return file
+    }
+
+    /** 保持 NAS 下载缓存总量在上限内（删除最旧文件） */
+    private fun enforceNasLimit() {
+        val files = nasDownloadDir.listFiles()?.filter { it.isFile }?.sortedBy { it.lastModified() } ?: return
+        var total = files.sumOf { it.length() }
+        for (file in files) {
+            if (total <= MAX_NAS_DOWNLOAD_SIZE) break
+            total -= file.length()
+            file.delete()
+        }
     }
 
     /** 删除单个 NAS 缓存歌曲 */

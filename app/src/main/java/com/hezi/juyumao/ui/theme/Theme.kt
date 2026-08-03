@@ -56,7 +56,9 @@ data class ExtendedColors(
     val cardBackground: Color = CardDark,
 )
 
-val LocalExtendedColors = compositionLocalOf { ExtendedColors() }
+private val DefaultExtendedColors = ExtendedColors()
+
+val LocalExtendedColors = compositionLocalOf { DefaultExtendedColors }
 
 @Composable
 fun JuYuMaoTheme(

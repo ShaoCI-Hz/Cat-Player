@@ -42,7 +42,15 @@ fun PlayerBackground(
                 dominantColor = withContext(Dispatchers.IO) {
                     var bitmap: android.graphics.Bitmap? = null
                     try {
-                        bitmap = BitmapFactory.decodeFile(artworkUri)
+                        // 采样解码（缩小到 ~256px 足够取色），避免全尺寸大图 OOM
+                        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        BitmapFactory.decodeFile(artworkUri, bounds)
+                        var sample = 1
+                        while (bounds.outWidth / sample > 256 || bounds.outHeight / sample > 256) {
+                            sample *= 2
+                        }
+                        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+                        bitmap = BitmapFactory.decodeFile(artworkUri, opts)
                         if (bitmap != null) {
                             val palette = Palette.from(bitmap).generate()
                             val swatch = palette.dominantSwatch

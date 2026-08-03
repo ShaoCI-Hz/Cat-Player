@@ -20,6 +20,8 @@ class SmbRepository @Inject constructor(
 ) {
     fun connectionStateFor(serverId: Long) = connectionPool.connectionStateFor(serverId)
 
+    fun isAnyConnected(): Boolean = connectionPool.isAnyConnected()
+
     fun getAllServers(): Flow<List<ServerEntity>> = serverDao.getAllServers().map { list ->
         list.map { it.decryptPassword() }
     }

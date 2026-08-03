@@ -1,4 +1,4 @@
-# JuYuMao 发布脚本
+﻿# JuYuMao 发布脚本
 # 用法: .\release.ps1 -Version "4.1.0" -ReleaseNotes "修复了xxx"
 # 功能: 编译 debug APK → 打包到桌面 → 更新版本号 → 提交 → 推送 → 创建 GitHub Release(附 APK + 更新日志)
 

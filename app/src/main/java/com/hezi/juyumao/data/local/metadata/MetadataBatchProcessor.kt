@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -70,7 +71,13 @@ class MetadataBatchProcessor @Inject constructor(
 
         scope.launch {
             val total = songs.size
-            val threadCount = settingsRepository.cacheThreads.first().coerceIn(1, 8)
+            // DataStore 读取可能挂起，用超时保护，失败时用默认 4
+            val threadCount = try {
+                withTimeoutOrNull(5000) { settingsRepository.cacheThreads.first() }?.coerceIn(1, 8) ?: 4
+            } catch (e: Exception) {
+                Log.w("BatchCache", "读取线程数失败，使用默认 4", e)
+                4
+            }
             _state.value = BatchCacheState(isRunning = true, total = total, threadCount = threadCount)
             Log.d("BatchCache", "开始批量缓存 $total 首，线程数 $threadCount")
 

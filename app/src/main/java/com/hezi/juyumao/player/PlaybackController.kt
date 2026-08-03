@@ -51,7 +51,7 @@ class PlaybackController @Inject constructor(
 
     fun play() {
         exoPlayer.playWhenReady = true
-        playbackStateHolder.updatePlaying(true)
+        // isPlaying 由 ExoPlayer 的 onIsPlayingChanged 回调同步，不在此处虚报
     }
 
     fun pause() {
@@ -86,8 +86,22 @@ class PlaybackController @Inject constructor(
     }
 
     fun currentSong(): Song? = queue.currentSong()
+        ?: playbackStateHolder.currentSong.value?.toDomain()
 
     fun getQueue(): List<Song> = queue.songs.value
+
+    fun getQueueIndex(): Int = queue.currentIndex.value
+
+    fun playAt(index: Int) {
+        queue.playAt(index)
+        scope.launch { playCurrent() }
+    }
+
+    fun clearQueue() {
+        queue.clear()
+        exoPlayer.stop()
+        playbackStateHolder.updateSong(null)
+    }
 
     // ── 内部 ──
 
@@ -123,7 +137,6 @@ class PlaybackController @Inject constructor(
                     exoPlayer.setMediaSource(mediaSource)
                     exoPlayer.prepare()
                     exoPlayer.playWhenReady = true
-                    playbackStateHolder.updatePlaying(true)
                     return
                 } catch (_: Exception) {
                     // SMB 连接失败，跳过
@@ -140,7 +153,6 @@ class PlaybackController @Inject constructor(
         exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
         exoPlayer.playWhenReady = true
-        playbackStateHolder.updatePlaying(true)
     }
 }
 

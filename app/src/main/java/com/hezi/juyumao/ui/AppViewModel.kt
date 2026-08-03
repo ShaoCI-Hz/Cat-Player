@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 /** 自动重连状态 */
@@ -63,6 +64,8 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             _reconnectState.value = ReconnectState(isReconnecting = true)
             try {
+            // 整体重连最多 20 秒，避免长时间阻塞
+            withTimeoutOrNull(20_000) {
                 val serverList = serverDao.getAutoConnectServers().first()
                 var anyConnected = false
                 val connectedNames = mutableListOf<String>()
@@ -117,6 +120,7 @@ class AppViewModel @Inject constructor(
                         success = false,
                     )
                 }
+            }
             } catch (e: Exception) {
                 Log.e("AppVM", "自动重连异常", e)
                 _reconnectState.value = ReconnectState(

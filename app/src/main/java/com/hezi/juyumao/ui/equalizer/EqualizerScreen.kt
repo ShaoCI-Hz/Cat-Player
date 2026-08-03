@@ -132,8 +132,13 @@ fun EqualizerScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             state.bands.forEach { band ->
-                var sliderValue by remember(band.currentLevel) {
+                // 拖动时用本地值，外部 state 变化时才同步（避免每帧重组）
+                var sliderValue by remember(band.index) {
                     mutableFloatStateOf(band.currentLevel.toFloat())
+                }
+                // 外部值变化时更新本地（非拖动状态）
+                LaunchedEffect(band.currentLevel) {
+                    sliderValue = band.currentLevel.toFloat()
                 }
 
                 Column(

@@ -82,7 +82,10 @@ fun JuYuMaoNavGraph(
             popEnterTransition = { fadeIn(animationSpec = tween(200)) },
             popExitTransition = { fadeOut(animationSpec = tween(150)) },
         ) {
-            PlayerScreen(onBack = { navController.popBackStack() })
+            PlayerScreen(
+                onBack = { navController.popBackStack() },
+                onOpenQueue = { navController.navigate(Screen.Queue.route) },
+            )
         }
         composable(Screen.Queue.route) {
             QueueScreen(onBack = { navController.popBackStack() })

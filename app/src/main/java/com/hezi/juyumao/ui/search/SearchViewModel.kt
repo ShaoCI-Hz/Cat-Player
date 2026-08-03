@@ -18,6 +18,7 @@ class SearchViewModel @Inject constructor(
     val searchQuery = MutableStateFlow("")
 
     val searchResults: StateFlow<List<SongEntity>> = searchQuery
+        .debounce(300) // 输入防抖，避免每次按键都查库
         .flatMapLatest { query ->
             if (query.isBlank()) flowOf(emptyList())
             else repository.search(query)

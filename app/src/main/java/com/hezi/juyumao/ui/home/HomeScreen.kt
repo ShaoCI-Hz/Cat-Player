@@ -110,9 +110,16 @@ fun HomeScreen(
                     Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text("NAS 连接", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Text("未连接", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            if (uiState.nasConnected) "已连接" else "未连接",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (uiState.nasConnected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                    FilledTonalButton(onClick = onNavigateToSmb) { Text("连接") }
+                    FilledTonalButton(onClick = onNavigateToSmb) {
+                        Text(if (uiState.nasConnected) "管理" else "连接")
+                    }
                 }
             }
         }

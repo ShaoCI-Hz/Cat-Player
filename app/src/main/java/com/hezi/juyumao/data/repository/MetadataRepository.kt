@@ -157,28 +157,39 @@ class MetadataRepository @Inject constructor(
         )
 
         val sharePath = song.smbSharePath ?: throw IllegalStateException("无共享路径")
-        val ext = sharePath.substringAfterLast('.', "").ifBlank { "bin" }
-        // 必须保留原始扩展名，jaudiotagger 按扩展名选择解析器，.tmp 会导致解析失败回退 Retriever（读不到歌词）
-        val tempFile = File(context.cacheDir, "smb_meta_${song.id}_${System.currentTimeMillis()}.$ext")
+        val tempFile = downloadSmbHeadToTemp(client, sharePath, "smb_meta_${song.id}_${System.currentTimeMillis()}")
         try {
-            client.openFile(sharePath).getOrThrow().use { input ->
-                // 读取前 8MB：确保覆盖 ID3v2/FLAC 头部标签（大封面 + 内嵌歌词）
-                val output = tempFile.outputStream()
-                val buffer = ByteArray(64 * 1024)
-                var total = 0L
-                val maxRead = 8L * 1024 * 1024
-                while (total < maxRead) {
-                    val n = input.read(buffer)
-                    if (n < 0) break
-                    output.write(buffer, 0, n)
-                    total += n
-                    if (total >= maxRead) break
-                }
-                output.close()
-            }
             return metadataExtractor.extract(tempFile.absolutePath)
         } finally {
             tempFile.delete()
         }
+    }
+
+    /**
+     * 下载 SMB 文件头部到临时文件（保留原始扩展名，jaudiotagger 按扩展名选解析器）
+     * 读取前 8MB 覆盖 ID3v2/FLAC 头部标签（大封面 + 内嵌歌词）
+     */
+    suspend fun downloadSmbHeadToTemp(
+        client: com.hezi.juyumao.data.remote.smb.SmbClientWrapper,
+        sharePath: String,
+        namePrefix: String,
+        maxBytes: Long = 8L * 1024 * 1024,
+    ): File {
+        val ext = sharePath.substringAfterLast('.', "").ifBlank { "bin" }
+        val tempFile = File(context.cacheDir, "${namePrefix}.$ext")
+        client.openFile(sharePath).getOrThrow().use { input ->
+            val output = tempFile.outputStream()
+            val buffer = ByteArray(64 * 1024)
+            var total = 0L
+            while (total < maxBytes) {
+                val n = input.read(buffer)
+                if (n < 0) break
+                output.write(buffer, 0, n)
+                total += n
+                if (total >= maxBytes) break
+            }
+            output.close()
+        }
+        return tempFile
     }
 }

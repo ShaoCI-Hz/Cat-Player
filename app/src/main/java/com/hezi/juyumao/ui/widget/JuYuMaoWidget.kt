@@ -78,7 +78,7 @@ class JuYuMaoWidget : GlanceAppWidget() {
                         maxLines = 1,
                     )
                     Text(
-                        text = "未在播放",
+                        text = "点击打开",
                         style = TextStyle(
                             color = subtextColor,
                             fontSize = 12.sp,

@@ -48,6 +48,11 @@ class PlaybackStateHolder @Inject constructor() {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) {
                     _duration.value = player.duration.coerceAtLeast(0)
+                } else if (state == Player.STATE_ENDED) {
+                    _isPlaying.value = false
+                    stopPolling()
+                } else if (state == Player.STATE_IDLE) {
+                    _isPlaying.value = false
                 }
             }
             override fun onIsPlayingChanged(playing: Boolean) {

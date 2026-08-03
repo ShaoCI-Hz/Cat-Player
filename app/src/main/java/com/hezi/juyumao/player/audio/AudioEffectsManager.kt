@@ -39,11 +39,26 @@ class AudioEffectsManager @Inject constructor() {
 
     fun attachToPlayer(exoPlayer: ExoPlayer) {
         release()
-        try {
-            equalizer = Equalizer(0, exoPlayer.audioSessionId)
-            refreshState()
-        } catch (_: Exception) {
-            // Equalizer not available on this device
+        // audioSessionId 在 prepare 后才有效；先监听 ready 再绑定
+        val attach = {
+            try {
+                equalizer = Equalizer(0, exoPlayer.audioSessionId)
+                refreshState()
+            } catch (_: Exception) {
+                // Equalizer not available on this device
+            }
+        }
+        if (exoPlayer.audioSessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
+            attach()
+        } else {
+            exoPlayer.addListener(object : androidx.media3.common.Player.Listener {
+                override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+                    if (playbackState == androidx.media3.common.Player.STATE_READY) {
+                        exoPlayer.removeListener(this)
+                        attach()
+                    }
+                }
+            })
         }
     }
 

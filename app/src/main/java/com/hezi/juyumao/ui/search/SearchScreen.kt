@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Search
@@ -93,12 +94,21 @@ fun SearchScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp),
-                        )
+                        if (!song.albumArtUri.isNullOrEmpty()) {
+                            coil.compose.AsyncImage(
+                                model = java.io.File(song.albumArtUri),
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp).clip(RoundedCornerShape(6.dp)),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = song.title,
