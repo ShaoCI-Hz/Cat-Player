@@ -25,19 +25,43 @@ import com.hezi.juyumao.ui.theme.JuYuMaoTheme
 fun JuYuMaoApp() {
     val appViewModel: AppViewModel = hiltViewModel()
     val themeMode by appViewModel.themeMode.collectAsStateWithLifecycle()
+    val onboardingCompleted by appViewModel.onboardingCompleted.collectAsStateWithLifecycle()
+
+    // 「连接 NAS」引导：完成后直接进入 SMB 连接页
+    var startAtSmb by remember { mutableStateOf(false) }
 
     JuYuMaoTheme(themeMode = themeMode) {
-        JuYuMaoAppContent(appViewModel)
+        if (!onboardingCompleted) {
+            com.hezi.juyumao.ui.onboarding.OnboardingScreen(
+                onStart = {
+                    appViewModel.completeOnboarding()
+                },
+                onConnectNas = {
+                    startAtSmb = true
+                    appViewModel.completeOnboarding()
+                },
+            )
+        } else {
+            JuYuMaoAppContent(appViewModel, startAtSmb)
+        }
     }
 }
 
 @Composable
 private fun JuYuMaoAppContent(
     appViewModel: AppViewModel,
+    startAtSmb: Boolean = false,
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // 引导「连接 NAS」后直达 SMB 页（带引导提示）
+    LaunchedEffect(startAtSmb) {
+        if (startAtSmb) {
+            navController.navigate(Screen.SmbConnect.createRoute(guide = true)) { popUpTo(Screen.Home.route) }
+        }
+    }
 
     val showBottomBar = currentRoute in listOf(
         Screen.Home.route,
@@ -49,7 +73,10 @@ private fun JuYuMaoAppContent(
     val currentSong by appViewModel.currentSong.collectAsStateWithLifecycle()
     val artworkUri by appViewModel.artworkUri.collectAsStateWithLifecycle()
     val isPlaying by appViewModel.isPlaying.collectAsStateWithLifecycle()
+    val position by appViewModel.position.collectAsStateWithLifecycle()
+    val duration by appViewModel.duration.collectAsStateWithLifecycle()
     val reconnectState by appViewModel.reconnectState.collectAsStateWithLifecycle()
+    val playbackError by appViewModel.playbackError.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // 自动重连完成提示
@@ -57,6 +84,14 @@ private fun JuYuMaoAppContent(
         reconnectState.message?.let { msg ->
             snackbarHostState.showSnackbar(msg, duration = androidx.compose.material3.SnackbarDuration.Short)
             appViewModel.clearReconnectMessage()
+        }
+    }
+
+    // 播放错误提示（解码失败等）
+    LaunchedEffect(playbackError) {
+        playbackError?.let { msg ->
+            snackbarHostState.showSnackbar(msg, duration = androidx.compose.material3.SnackbarDuration.Short)
+            appViewModel.clearPlaybackError()
         }
     }
 
@@ -84,6 +119,7 @@ private fun JuYuMaoAppContent(
                         songArtist = currentSong?.artist,
                         artworkUri = artworkUri,
                         isPlaying = isPlaying,
+                        progress = if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f,
                         onPlayPauseClick = { appViewModel.togglePlay() },
                     )
                     PremiumBottomNavBar(

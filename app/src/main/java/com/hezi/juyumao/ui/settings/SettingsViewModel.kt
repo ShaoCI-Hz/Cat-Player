@@ -28,6 +28,18 @@ class SettingsViewModel @Inject constructor(
     val cacheThreads: StateFlow<Int> = settingsRepository.cacheThreads
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 4)
 
+    val audioBufferSize: StateFlow<Int> = settingsRepository.audioBufferSize
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 256)
+
+    val gaplessPlayback: StateFlow<Boolean> = settingsRepository.gaplessPlayback
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val crossfadeDuration: StateFlow<Int> = settingsRepository.crossfadeDuration
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val spectrumVisualizer: StateFlow<Boolean> = settingsRepository.spectrumVisualizer
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }
@@ -42,5 +54,21 @@ class SettingsViewModel @Inject constructor(
 
     fun setCacheThreads(threads: Int) {
         viewModelScope.launch { settingsRepository.setCacheThreads(threads) }
+    }
+
+    fun setAudioBufferSize(kb: Int) {
+        viewModelScope.launch { settingsRepository.setAudioBufferSize(kb) }
+    }
+
+    fun setGaplessPlayback(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setGaplessPlayback(enabled) }
+    }
+
+    fun setCrossfadeDuration(ms: Int) {
+        viewModelScope.launch { settingsRepository.setCrossfadeDuration(ms) }
+    }
+
+    fun setSpectrumVisualizer(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setSpectrumVisualizer(enabled) }
     }
 }

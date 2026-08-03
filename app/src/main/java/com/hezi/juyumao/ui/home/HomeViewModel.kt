@@ -55,10 +55,12 @@ class HomeViewModel @Inject constructor(
                 musicRepository.getTotalSize(),
                 musicRepository.getAlbumCount(),
                 musicRepository.getArtistCount(),
-            ) { count, size, albums, artists ->
+                musicRepository.getTotalPlayCount(),
+            ) { count, size, albums, artists, playCount ->
                 _uiState.value.copy(
                     songCount = count, totalSize = size ?: 0L,
                     albumCount = albums, artistCount = artists,
+                    playCount = playCount,
                 )
             }.collect { _uiState.value = it }
         }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.provider.MediaStore
 import com.hezi.juyumao.data.local.artwork.ArtworkCache
 import com.hezi.juyumao.data.local.db.entity.SongEntity
+import com.hezi.juyumao.data.local.metadata.HiRes
 import com.hezi.juyumao.data.local.metadata.MetadataExtractor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +23,6 @@ class LocalMusicScanner @Inject constructor(
             "mp3", "aac", "m4a", "ogg", "opus", "wma", "wav", "flac",
             "dsf", "dff", "ape", "wv", "aiff", "aif",
         )
-        private val HIRES_EXTENSIONS = setOf("dsf", "dff", "ape", "wv", "aiff", "aif", "flac")
         private val EXCLUDED_DIR_PATTERNS = listOf(
             "/Notifications/", "/Ringtones/", "/Alarms/",
             "/Recordings/", "/Voice Recorder/",
@@ -151,7 +151,7 @@ class LocalMusicScanner @Inject constructor(
                             filePath = filePath,
                             fileSize = fileSize,
                             mimeType = mimeType,
-                            isHiRes = isHiRes(filePath, sampleRate),
+                            isHiRes = HiRes.isHiRes(sampleRate, bitsPerSample, filePath),
                             source = "LOCAL",
                             smbServerId = null,
                             smbSharePath = null,
@@ -194,12 +194,6 @@ class LocalMusicScanner @Inject constructor(
             if (fileName.contains(keyword.lowercase())) return false
         }
         return true
-    }
-
-    private fun isHiRes(filePath: String, sampleRate: Int = 0): Boolean {
-        if (sampleRate > 44100) return true
-        val ext = filePath.substringAfterLast('.', "").lowercase()
-        return ext in HIRES_EXTENSIONS
     }
 
     /** 检查同目录是否有外挂 .lrc 文件 */

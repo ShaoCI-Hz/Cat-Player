@@ -26,6 +26,10 @@ class SettingsRepository @Inject constructor(
     val lyricsFontSize: Flow<Float> = settingsDataStore.lyricsFontSize
     val lyricsFontBold: Flow<Boolean> = settingsDataStore.lyricsFontBold
     val cacheThreads: Flow<Int> = settingsDataStore.cacheThreads
+    val playbackSpeed: Flow<Float> = settingsDataStore.playbackSpeed
+    val crossfadeDuration: Flow<Int> = settingsDataStore.crossfadeDuration
+    val spectrumVisualizer: Flow<Boolean> = settingsDataStore.spectrumVisualizer
+    val onboardingCompleted: Flow<Boolean> = settingsDataStore.onboardingCompleted
 
     suspend fun setThemeMode(mode: ThemeMode) {
         settingsDataStore.setThemeMode(
@@ -44,4 +48,8 @@ class SettingsRepository @Inject constructor(
     suspend fun setLyricsFontSize(size: Float) = settingsDataStore.setLyricsFontSize(size)
     suspend fun setLyricsFontBold(bold: Boolean) = settingsDataStore.setLyricsFontBold(bold)
     suspend fun setCacheThreads(threads: Int) = settingsDataStore.setCacheThreads(threads)
+    suspend fun setPlaybackSpeed(speed: Float) = settingsDataStore.setPlaybackSpeed(speed)
+    suspend fun setCrossfadeDuration(ms: Int) = settingsDataStore.setCrossfadeDuration(ms)
+    suspend fun setSpectrumVisualizer(enabled: Boolean) = settingsDataStore.setSpectrumVisualizer(enabled)
+    suspend fun setOnboardingCompleted(completed: Boolean) = settingsDataStore.setOnboardingCompleted(completed)
 }

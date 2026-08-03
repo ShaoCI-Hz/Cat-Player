@@ -2,6 +2,7 @@ package com.hezi.juyumao.di
 
 import android.content.Context
 import com.hezi.juyumao.data.local.db.JuYuMaoDatabase
+import com.hezi.juyumao.data.local.db.dao.PlaylistDao
 import com.hezi.juyumao.data.local.db.dao.ServerDao
 import com.hezi.juyumao.data.local.db.dao.SongDao
 import com.hezi.juyumao.data.local.datastore.SettingsDataStore
@@ -32,6 +33,12 @@ object AppModule {
     @Singleton
     fun provideServerDao(database: JuYuMaoDatabase): ServerDao {
         return database.serverDao()
+    }
+
+    @Provides
+    @Singleton
+    fun providePlaylistDao(database: JuYuMaoDatabase): PlaylistDao {
+        return database.playlistDao()
     }
 
     @Provides

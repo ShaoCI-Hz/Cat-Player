@@ -14,8 +14,8 @@ android {
         applicationId = "com.hezi.juyumao"
         minSdk = 29
         targetSdk = 35
-        versionCode = 6
-        versionName = "4.0.1"
+        versionCode = 7
+        versionName = "4.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -86,7 +86,7 @@ dependencies {
     implementation(libs.room.paging)
     ksp(libs.room.compiler)
 
-    // Media3
+    // Media3（FFmpeg 扩展未发布到 Maven，DSD/APE/WavPack 由解码失败兜底处理）
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.session)
     implementation(libs.media3.ui)

@@ -34,6 +34,10 @@ class PlaybackStateHolder @Inject constructor() {
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration
 
+    /** 播放错误消息（解码失败等），消费后应清除 */
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage
+
     @Volatile private var exoPlayer: ExoPlayer? = null
 
     // 进度轮询协程
@@ -97,6 +101,10 @@ class PlaybackStateHolder @Inject constructor() {
 
     fun updatePlaying(playing: Boolean) {
         _isPlaying.value = playing
+    }
+
+    fun setErrorMessage(message: String?) {
+        _errorMessage.value = message
     }
 
     fun seekTo(positionMs: Long) {

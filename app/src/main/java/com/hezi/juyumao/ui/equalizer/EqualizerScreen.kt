@@ -29,6 +29,7 @@ fun EqualizerScreen(
     viewModel: EqualizerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val spectrum by viewModel.spectrum.collectAsStateWithLifecycle()
     var selectedPresetIndex by remember(state.currentPreset) { mutableIntStateOf(state.currentPreset.toInt()) }
 
     Column(
@@ -54,6 +55,15 @@ fun EqualizerScreen(
             )
             Spacer(modifier = Modifier.size(48.dp))
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 频谱可视化（复用 SpectrumAnalyzer 数据）
+        com.hezi.juyumao.ui.player.components.SpectrumBars(
+            bars = spectrum,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -181,6 +191,128 @@ fun EqualizerScreen(
                     )
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ── 音效增强（T10.7）：低音/虚拟环绕/响度 ──
+        Text(
+            text = "音效增强",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 低音增强
+        if (state.bassBoostAvailable) {
+            var bassValue by remember { mutableFloatStateOf(state.bassBoostStrength.toFloat()) }
+            LaunchedEffect(state.bassBoostStrength) { bassValue = state.bassBoostStrength.toFloat() }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "低音增强",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = state.bassBoostEnabled,
+                        onCheckedChange = { viewModel.setBassBoostEnabled(it) },
+                    )
+                }
+                Slider(
+                    value = bassValue,
+                    onValueChange = { bassValue = it },
+                    onValueChangeFinished = { viewModel.setBassBoostStrength(bassValue.toInt().toShort()) },
+                    valueRange = 0f..1000f,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    ),
+                )
+            }
+        }
+
+        // 虚拟环绕
+        if (state.virtualizerAvailable) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "虚拟环绕",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = state.virtualizerEnabled,
+                    onCheckedChange = { viewModel.setVirtualizerEnabled(it) },
+                )
+            }
+        }
+
+        // 响度增强
+        if (state.loudnessAvailable) {
+            var loudnessValue by remember { mutableFloatStateOf(state.loudnessGain.toFloat()) }
+            LaunchedEffect(state.loudnessGain) { loudnessValue = state.loudnessGain.toFloat() }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "响度增强",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = state.loudnessGain != 0,
+                        onCheckedChange = { enabled ->
+                            viewModel.setLoudnessGain(if (enabled) 1000 else 0)
+                        },
+                    )
+                }
+                Slider(
+                    value = loudnessValue,
+                    onValueChange = { loudnessValue = it },
+                    onValueChangeFinished = { viewModel.setLoudnessGain(loudnessValue.toInt()) },
+                    valueRange = 0f..4000f,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    ),
+                )
+            }
+        }
+
+        // 设备不支持时提示
+        if (!state.bassBoostAvailable && !state.virtualizerAvailable && !state.loudnessAvailable) {
+            Text(
+                text = "当前设备不支持音效增强",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))

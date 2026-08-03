@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -25,6 +26,35 @@ class BrowseViewModel @Inject constructor(
 
     val allSongs: StateFlow<List<SongEntity>> = songDao.getAllSongs()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** 收藏歌曲（我喜欢 Tab） */
+    val favorites: StateFlow<List<SongEntity>> = songDao.getFavorites()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** 专辑/艺术家/流派浏览（T10.8） */
+    val albumNames: StateFlow<List<String>> = songDao.getAlbumNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val artistNames: StateFlow<List<String>> = songDao.getArtistNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val genreNames: StateFlow<List<String>> = songDao.getGenreNames()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** 当前选中维度（专辑/艺术家/流派名）对应的歌曲 */
+    private val _dimensionSongs = MutableStateFlow<List<SongEntity>>(emptyList())
+    val dimensionSongs: StateFlow<List<SongEntity>> = _dimensionSongs
+
+    fun loadDimensionSongs(type: String, name: String) {
+        viewModelScope.launch {
+            _dimensionSongs.value = when (type) {
+                "album" -> songDao.getSongsByAlbum(name).first()
+                "artist" -> songDao.getSongsByArtist(name).first()
+                "genre" -> songDao.getSongsByGenre(name).first()
+                else -> emptyList()
+            }
+        }
+    }
 
     /** 批量缓存进度 */
     val batchCacheState: StateFlow<BatchCacheState> = metadataBatchProcessor.state
@@ -58,6 +88,13 @@ class BrowseViewModel @Inject constructor(
             } finally {
                 artworkInFlight.value = artworkInFlight.value - song.id
             }
+        }
+    }
+
+    /** 切换歌曲收藏状态（列表收藏入口共用） */
+    fun toggleFavorite(song: SongEntity) {
+        viewModelScope.launch {
+            songDao.updateFavorite(song.id, !song.isFavorite)
         }
     }
 }

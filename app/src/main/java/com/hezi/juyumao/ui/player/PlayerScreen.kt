@@ -2,14 +2,16 @@ package com.hezi.juyumao.ui.player
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,12 +32,34 @@ fun PlayerScreen(
     val duration by viewModel.duration.collectAsStateWithLifecycle()
     val lyricsFontSize by viewModel.lyricsFontSize.collectAsStateWithLifecycle()
     val lyricsFontBold by viewModel.lyricsFontBold.collectAsStateWithLifecycle()
+    val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
+    val spectrumEnabled by viewModel.spectrumEnabled.collectAsStateWithLifecycle()
+    val spectrum by viewModel.spectrum.collectAsStateWithLifecycle()
 
     var isImmersive by remember { mutableStateOf(false) }
     var shuffleEnabled by remember { mutableStateOf(false) }
     var repeatMode by remember { mutableIntStateOf(0) }
-    var isFavorite by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
+    var showAddToPlaylist by remember { mutableStateOf(false) }
+    var playbackSpeed by remember { mutableStateOf(1.0f) }
+    var showSpeedMenu by remember { mutableStateOf(false) }
+
+    // 封面入场动画：列表 → 播放器「放大入场」（T11.1 备选方案）
+    var entered by remember { mutableStateOf(false) }
+    val enterScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (entered) 1f else 0.85f,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = 0.65f,
+            stiffness = 300f,
+        ),
+        label = "cover_enter_scale",
+    )
+    val enterAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (entered) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(350),
+        label = "cover_enter_alpha",
+    )
+    LaunchedEffect(Unit) { entered = true }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // ===== 背景层：封面模糊 + 主色调 + 流光 =====
@@ -56,18 +80,38 @@ fun PlayerScreen(
                 isImmersive = isImmersive,
             )
 
-            // 封面/歌词上下滑动切换
-            CoverLyricsPager(
-                artworkUri = artworkUri,
-                lyricsData = lyrics,
-                currentPositionMs = position,
-                isPlaying = isPlaying,
-                showLyrics = showLyrics,
-                lyricsFontSize = lyricsFontSize,
-                lyricsFontBold = lyricsFontBold,
-                onLineClick = { viewModel.seekTo(it) },
-                modifier = Modifier.weight(1f),
-            )
+            // 封面/歌词上下滑动切换（带入场放大动画）
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        scaleX = enterScale
+                        scaleY = enterScale
+                        alpha = enterAlpha
+                    },
+            ) {
+                CoverLyricsPager(
+                    artworkUri = artworkUri,
+                    lyricsData = lyrics,
+                    currentPositionMs = position,
+                    isPlaying = isPlaying,
+                    showLyrics = showLyrics,
+                    lyricsFontSize = lyricsFontSize,
+                    lyricsFontBold = lyricsFontBold,
+                    onLineClick = { viewModel.seekTo(it) },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            // 频谱可视化（仅播放时显示）
+            if (spectrumEnabled && isPlaying) {
+                SpectrumBars(
+                    bars = spectrum,
+                    color = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
 
             // 歌曲信息（完整模式才显示）
             AnimatedVisibility(
@@ -101,18 +145,55 @@ fun PlayerScreen(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    // 音频规格展示（HiRes 金色徽标 + 采样率/位深/码率）
+                    if (currentSong != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        AudioSpecRow(song = currentSong!!)
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 进度条
-            PlayerSlider(
-                position = position,
-                duration = duration,
-                onSeek = { viewModel.seekTo(it) },
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
+            // 进度条 + 倍速按钮
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PlayerSlider(
+                    position = position,
+                    duration = duration,
+                    onSeek = { viewModel.seekTo(it) },
+                    modifier = Modifier.weight(1f),
+                )
+                // 倍速菜单
+                Box {
+                    TextButton(onClick = { showSpeedMenu = true }) {
+                        Text(
+                            text = if (playbackSpeed == 1.0f) "1.0x" else "${playbackSpeed}x",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.8f),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showSpeedMenu,
+                        onDismissRequest = { showSpeedMenu = false },
+                    ) {
+                        listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
+                            DropdownMenuItem(
+                                text = { Text(if (speed == 1.0f) "正常" else "${speed}x") },
+                                onClick = {
+                                    playbackSpeed = speed
+                                    viewModel.setPlaybackSpeed(speed)
+                                    showSpeedMenu = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -156,12 +237,63 @@ fun PlayerScreen(
                     isFavorite = isFavorite,
                     onLyricsClick = { showLyrics = !showLyrics },
                     onQueueClick = onOpenQueue,
-                    onFavoriteClick = { isFavorite = !isFavorite },
-                    onMoreClick = { },
+                    onFavoriteClick = { viewModel.toggleFavorite() },
+                    onMoreClick = { showAddToPlaylist = true },
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    // 添加到歌单弹层（更多按钮）
+    if (showAddToPlaylist && currentSong != null) {
+        com.hezi.juyumao.ui.playlist.AddToPlaylistDialog(
+            song = currentSong!!,
+            onDismiss = { showAddToPlaylist = false },
+        )
+    }
+}
+
+/** 音频规格行：HiRes 徽标 + 「采样率/位深 · 格式」 */
+@Composable
+private fun AudioSpecRow(song: com.hezi.juyumao.data.local.db.entity.SongEntity) {
+    val specs = buildList {
+        if (song.sampleRate > 0) add("${song.sampleRate / 1000.0}kHz".replace(".0", ""))
+        if (song.bitsPerSample > 0) add("${song.bitsPerSample}bit")
+        if (song.bitrate > 0) add("${(song.bitrate / 1000).coerceAtLeast(1)}kbps")
+        if (song.mimeType.isNotBlank()) {
+            add(song.mimeType.substringAfter("/").uppercase())
+        }
+    }
+    if (specs.isEmpty()) return
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (song.isHiRes) {
+            val isDsd = song.filePath.substringAfterLast('.', "").lowercase() in setOf("dsf", "dff")
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = com.hezi.juyumao.ui.theme.LocalExtendedColors.current.hiResGold.copy(alpha = 0.2f),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+                    )
+                    .padding(horizontal = 5.dp, vertical = 1.dp),
+            ) {
+                Text(
+                    text = if (isDsd) "DSD" else "Hi-Res",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = com.hezi.juyumao.ui.theme.LocalExtendedColors.current.hiResGold,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        Text(
+            text = specs.joinToString(" · "),
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White.copy(alpha = 0.6f),
+        )
     }
 }

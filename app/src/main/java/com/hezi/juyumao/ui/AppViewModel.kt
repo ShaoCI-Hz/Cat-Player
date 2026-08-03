@@ -10,6 +10,7 @@ import com.hezi.juyumao.data.local.db.entity.SongEntity
 import com.hezi.juyumao.data.local.metadata.MetadataBatchProcessor
 import com.hezi.juyumao.data.remote.smb.SmbConnectionPool
 import com.hezi.juyumao.data.repository.SettingsRepository
+import com.hezi.juyumao.player.PlaybackController
 import com.hezi.juyumao.player.PlaybackStateHolder
 import com.hezi.juyumao.ui.theme.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,8 +33,9 @@ data class ReconnectState(
 
 @HiltViewModel
 class AppViewModel @Inject constructor(
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
     private val playbackStateHolder: PlaybackStateHolder,
+    private val playbackController: PlaybackController,
     private val serverDao: ServerDao,
     private val connectionPool: SmbConnectionPool,
     private val songDao: SongDao,
@@ -43,16 +45,38 @@ class AppViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = settingsRepository.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.DARK)
 
+    /** 首次引导是否完成（T12） */
+    val onboardingCompleted: StateFlow<Boolean> = settingsRepository.onboardingCompleted
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     val currentSong: StateFlow<SongEntity?> = playbackStateHolder.currentSong
     val artworkUri: StateFlow<String?> = playbackStateHolder.artworkUri
     val isPlaying: StateFlow<Boolean> = playbackStateHolder.isPlaying
+    val position: StateFlow<Long> = playbackStateHolder.position
+    val duration: StateFlow<Long> = playbackStateHolder.duration
 
     private val _reconnectState = MutableStateFlow(ReconnectState())
     val reconnectState: StateFlow<ReconnectState> = _reconnectState.asStateFlow()
 
+    /** 播放错误消息（解码失败等），由 App 层 Snackbar 展示 */
+    private val _playbackError = MutableStateFlow<String?>(null)
+    val playbackError: StateFlow<String?> = _playbackError.asStateFlow()
+
     init {
         // 启动时自动重连已保存的 SMB 服务器
         autoReconnectSavedServers()
+        // 播放错误转发为全局提示
+        viewModelScope.launch {
+            playbackStateHolder.errorMessage.collect { msg ->
+                _playbackError.value = msg
+            }
+        }
+    }
+
+    /** 清除播放错误提示（展示后调用） */
+    fun clearPlaybackError() {
+        _playbackError.value = null
+        playbackStateHolder.setErrorMessage(null)
     }
 
     /** 清空重连提示（提示消失后调用） */
@@ -140,6 +164,26 @@ class AppViewModel @Inject constructor(
         } else {
             exoPlayer.play()
             playbackStateHolder.updatePlaying(true)
+        }
+    }
+
+    /** 整单播放（歌单/专辑/艺术家详情共用） */
+    fun playSongs(songs: List<SongEntity>) {
+        if (songs.isEmpty()) return
+        playbackController.loadPlaylist(songs, 0)
+    }
+
+    /** 标记引导完成（T12） */
+    fun completeOnboarding() {
+        viewModelScope.launch {
+            settingsRepository.setOnboardingCompleted(true)
+        }
+    }
+
+    /** 重新查看引导（设置页入口） */
+    fun resetOnboarding() {
+        viewModelScope.launch {
+            settingsRepository.setOnboardingCompleted(false)
         }
     }
 }

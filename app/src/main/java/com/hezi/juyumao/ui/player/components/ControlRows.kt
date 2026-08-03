@@ -1,5 +1,6 @@
 package com.hezi.juyumao.ui.player.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -10,9 +11,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.hezi.juyumao.ui.components.AnimatedIconButton
 
 /**
  * 完整模式控制区 — 五按钮（随机/上一首/播放暂停/下一首/循环）
+ * 全部使用 AnimatedIconButton 弹性按压反馈（T11.3）
  */
 @Composable
 fun FullControlRow(
@@ -31,36 +34,42 @@ fun FullControlRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // 随机播放
-        IconButton(onClick = onShuffle) {
+        AnimatedIconButton(onClick = onShuffle) {
             Icon(Icons.Default.Shuffle, "随机",
                 tint = if (shuffleEnabled) Color.White else Color.White.copy(alpha = 0.5f),
                 modifier = Modifier.size(22.dp))
         }
         // 上一首
-        IconButton(onClick = onPrevious) {
+        AnimatedIconButton(onClick = onPrevious) {
             Icon(Icons.Default.SkipPrevious, "上一首",
                 tint = Color.White, modifier = Modifier.size(36.dp))
         }
         // 播放/暂停（大按钮）
-        FilledIconButton(
+        AnimatedIconButton(
             onClick = onPlayPause,
             modifier = Modifier.size(64.dp),
-            colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.White),
         ) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                contentDescription = if (isPlaying) "暂停" else "播放",
-                tint = Color.Black,
-                modifier = Modifier.size(32.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(Color.White, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlaying) "暂停" else "播放",
+                    tint = Color.Black,
+                    modifier = Modifier.size(32.dp),
+                )
+            }
         }
         // 下一首
-        IconButton(onClick = onNext) {
+        AnimatedIconButton(onClick = onNext) {
             Icon(Icons.Default.SkipNext, "下一首",
                 tint = Color.White, modifier = Modifier.size(36.dp))
         }
         // 循环模式
-        IconButton(onClick = onRepeat) {
+        AnimatedIconButton(onClick = onRepeat) {
             Icon(
                 imageVector = if (repeatMode == 2) Icons.Default.RepeatOne else Icons.Default.Repeat,
                 contentDescription = "循环",
@@ -86,22 +95,28 @@ fun ImmersiveControlRow(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onPrevious, modifier = Modifier.size(48.dp)) {
+        AnimatedIconButton(onClick = onPrevious, modifier = Modifier.size(48.dp)) {
             Icon(Icons.Default.SkipPrevious, "上一首",
                 tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(28.dp))
         }
-        FilledIconButton(
+        AnimatedIconButton(
             onClick = onPlayPause,
             modifier = Modifier.size(72.dp),
-            colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.White),
         ) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                contentDescription = null,
-                tint = Color.Black, modifier = Modifier.size(36.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .background(Color.White, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.Black, modifier = Modifier.size(36.dp),
+                )
+            }
         }
-        IconButton(onClick = onNext, modifier = Modifier.size(48.dp)) {
+        AnimatedIconButton(onClick = onNext, modifier = Modifier.size(48.dp)) {
             Icon(Icons.Default.SkipNext, "下一首",
                 tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(28.dp))
         }

@@ -7,6 +7,7 @@ import com.hezi.juyumao.data.local.db.dao.ServerDao
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 import com.hezi.juyumao.data.local.lyrics.LyricsManager
 import com.hezi.juyumao.data.local.metadata.AudioMetadata
+import com.hezi.juyumao.data.local.metadata.HiRes
 import com.hezi.juyumao.data.local.metadata.MetadataExtractor
 import com.hezi.juyumao.data.remote.smb.SmbConnectionPool
 import com.hezi.juyumao.player.audio.LyricsData
@@ -107,6 +108,12 @@ class MetadataRepository @Inject constructor(
                 bitsPerSample = if (meta.bitsPerSample > 0) meta.bitsPerSample else song.bitsPerSample,
                 hasEmbeddedLyrics = meta.embeddedLyrics != null || song.hasEmbeddedLyrics,
                 duration = if (meta.duration > 0) meta.duration else song.duration,
+                // 用提取到的完整信息刷新 HiRes 判定（SMB 歌曲扫描时只有扩展名判定）
+                isHiRes = if (meta.sampleRate > 0 || meta.bitsPerSample > 0) {
+                    HiRes.isHiRes(meta.sampleRate, meta.bitsPerSample, song.filePath)
+                } else {
+                    song.isHiRes
+                },
             )
         } catch (e: Exception) {
             song

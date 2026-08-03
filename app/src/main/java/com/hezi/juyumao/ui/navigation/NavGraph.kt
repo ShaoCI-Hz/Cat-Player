@@ -47,11 +47,15 @@ fun JuYuMaoNavGraph(
         },
     ) {
         composable(Screen.Home.route) {
+            val appViewModel: com.hezi.juyumao.ui.AppViewModel = androidx.hilt.navigation.compose.hiltViewModel()
             HomeScreen(
                 onNavigateToPlayer = { songId -> navController.navigate(Screen.Player.createRoute(songId)) },
                 onNavigateToSmb = { navController.navigate(Screen.SmbConnect.route) },
                 onNavigateToEqualizer = { navController.navigate(Screen.Equalizer.route) },
                 onNavigateToQueue = { navController.navigate(Screen.Queue.route) },
+                onNavigateToPlaylist = { navController.navigate(Screen.Playlist.route) },
+                onNavigateToStatistics = { navController.navigate(Screen.Statistics.route) },
+                onPlayAll = { songs -> appViewModel.playSongs(songs) },
             )
         }
         composable(Screen.Browse.route) {
@@ -90,14 +94,36 @@ fun JuYuMaoNavGraph(
         composable(Screen.Queue.route) {
             QueueScreen(onBack = { navController.popBackStack() })
         }
-        composable(Screen.SmbConnect.route) {
-            SmbConnectScreen(onBack = { navController.popBackStack() })
+        composable(
+            route = Screen.SmbConnect.route,
+            arguments = listOf(
+                androidx.navigation.navArgument("guide") { type = NavType.BoolType; defaultValue = false },
+            ),
+        ) { entry ->
+            val guide = entry.arguments?.getBoolean("guide") ?: false
+            SmbConnectScreen(
+                onBack = { navController.popBackStack() },
+                showGuideTip = guide,
+            )
         }
         composable(Screen.Equalizer.route) {
             EqualizerScreen(onBack = { navController.popBackStack() })
         }
         composable(Screen.Cache.route) {
             CacheScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.Playlist.route) {
+            val appViewModel: com.hezi.juyumao.ui.AppViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+            com.hezi.juyumao.ui.playlist.PlaylistScreen(
+                onBack = { navController.popBackStack() },
+                onPlayAll = { songs -> appViewModel.playSongs(songs) },
+            )
+        }
+        composable(Screen.Statistics.route) {
+            com.hezi.juyumao.ui.statistics.StatisticsScreen(
+                onBack = { navController.popBackStack() },
+                onSongClick = { songId -> navController.navigate(Screen.Player.createRoute(songId)) },
+            )
         }
     }
 }

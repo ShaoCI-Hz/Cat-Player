@@ -10,6 +10,9 @@
 # Media3
 -keep class androidx.media3.** { *; }
 
+# Media3 FFmpeg 扩展解码器
+-keep class androidx.media3.decoder.ffmpeg.** { *; }
+
 # jmdns (mDNS discovery, uses reflection)
 -keep class javax.jmdns.** { *; }
 -keep class org.jmdns.** { *; }

@@ -1,5 +1,11 @@
 package com.hezi.juyumao.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,13 +26,13 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
+import com.hezi.juyumao.ui.components.AnimatedIconButton
 import java.io.File
 
 @Composable
 fun MiniPlayerBar(
     onPlayerClick: () -> Unit,
     modifier: Modifier = Modifier,
-    // TODO: 接入实际播放状态
     songTitle: String? = null,
     songArtist: String? = null,
     artworkUri: String? = null,
@@ -34,6 +40,13 @@ fun MiniPlayerBar(
     progress: Float = 0f,
     onPlayPauseClick: () -> Unit = {},
 ) {
+    // 进度动画：外部进度变化时平滑过渡
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = spring(dampingRatio = 1f, stiffness = 120f),
+        label = "mini_progress",
+    )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -56,51 +69,63 @@ fun MiniPlayerBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // 封面缩略图
-                if (artworkUri != null) {
-                    val context = LocalContext.current
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(File(artworkUri))
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop,
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(8.dp),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
+                // 封面缩略图（切歌时 crossfade 过渡）
+                AnimatedContent(
+                    targetState = artworkUri,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "mini_artwork",
+                ) { uri ->
+                    if (uri != null) {
+                        val context = LocalContext.current
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(File(uri))
+                                .crossfade(true)
+                                .build(),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop,
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(8.dp),
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                     }
                 }
 
-                // 歌曲信息
+                // 歌曲信息（标题切歌 crossfade）
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    Text(
-                        text = songTitle ?: "未在播放",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    AnimatedContent(
+                        targetState = songTitle,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        label = "mini_title",
+                    ) { title ->
+                        Text(
+                            text = title ?: "未在播放",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     if (!songArtist.isNullOrEmpty()) {
                         Text(
                             text = songArtist,
@@ -112,8 +137,8 @@ fun MiniPlayerBar(
                     }
                 }
 
-                // 播放/暂停按钮
-                IconButton(
+                // 播放/暂停按钮（弹性按压）
+                AnimatedIconButton(
                     onClick = onPlayPauseClick,
                     modifier = Modifier.size(40.dp),
                 ) {
@@ -126,10 +151,10 @@ fun MiniPlayerBar(
                 }
             }
 
-            // 进度条（始终显示）
+            // 进度条（平滑动画）
             Spacer(modifier = Modifier.height(6.dp))
             LinearProgressIndicator(
-                progress = { progress },
+                progress = { animatedProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(2.dp)

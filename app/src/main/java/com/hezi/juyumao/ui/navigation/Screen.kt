@@ -20,9 +20,13 @@ sealed class Screen(val route: String) {
         fun createRoute(songId: Long) = "player/$songId"
     }
     data object Queue : Screen("queue")
-    data object SmbConnect : Screen("smb_connect")
+    data object SmbConnect : Screen("smb_connect?guide={guide}") {
+        fun createRoute(guide: Boolean = false) = "smb_connect?guide=$guide"
+    }
     data object Equalizer : Screen("equalizer")
     data object Cache : Screen("cache")
+    data object Playlist : Screen("playlist")
+    data object Statistics : Screen("statistics")
 }
 
 data class BottomNavItem(

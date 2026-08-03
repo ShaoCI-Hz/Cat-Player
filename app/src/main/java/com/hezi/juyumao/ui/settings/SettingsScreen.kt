@@ -27,6 +27,7 @@ fun SettingsScreen(
 ) {
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     var showThemeDialog by remember { mutableStateOf(false) }
+    val appViewModel: com.hezi.juyumao.ui.AppViewModel = androidx.hilt.navigation.compose.hiltViewModel()
 
     val themeLabel = when (themeMode) {
         ThemeMode.DARK -> "深色"
@@ -122,6 +123,10 @@ fun SettingsScreen(
 
         // Audio section
         item {
+            val audioBufferSize by viewModel.audioBufferSize.collectAsStateWithLifecycle()
+            val gaplessPlayback by viewModel.gaplessPlayback.collectAsStateWithLifecycle()
+            val crossfadeDuration by viewModel.crossfadeDuration.collectAsStateWithLifecycle()
+            val spectrumVisualizer by viewModel.spectrumVisualizer.collectAsStateWithLifecycle()
             SettingsSection(title = "音频") {
                 SettingsItem(
                     icon = Icons.Default.Equalizer,
@@ -129,18 +134,109 @@ fun SettingsScreen(
                     subtitle = "调节音频效果",
                     onClick = onNavigateToEqualizer,
                 )
-                SettingsItem(
-                    icon = Icons.Default.HighQuality,
-                    title = "无缝播放",
-                    subtitle = "消除曲目切换间隙",
-                    onClick = { },
+                // 无缝播放开关
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.setGaplessPlayback(!gaplessPlayback) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Icon(Icons.Default.HighQuality, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("无缝播放", style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface)
+                        Text("同格式连续曲目切换无间隙", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = gaplessPlayback, onCheckedChange = { viewModel.setGaplessPlayback(it) })
+                }
+                // 交叉淡化滑块
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.GraphicEq, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Text("交叉淡化", style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    var sliderValue by remember { mutableFloatStateOf(crossfadeDuration.toFloat()) }
+                    LaunchedEffect(crossfadeDuration) { sliderValue = crossfadeDuration.toFloat() }
+                    Slider(
+                        value = sliderValue,
+                        onValueChange = { sliderValue = it },
+                        onValueChangeFinished = { viewModel.setCrossfadeDuration(sliderValue.toInt()) },
+                        valueRange = 0f..2000f,
+                        steps = 7,
+                        modifier = Modifier.width(140.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                    Text(
+                        if (crossfadeDuration == 0) "关" else "${crossfadeDuration}ms",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                // 频谱可视化开关
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.setSpectrumVisualizer(!spectrumVisualizer) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Icon(Icons.Default.Equalizer, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("频谱可视化", style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface)
+                        Text("播放页实时频谱（低端机可关闭）", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = spectrumVisualizer, onCheckedChange = { viewModel.setSpectrumVisualizer(it) })
+                }
+                // 音频缓冲大小（滑块可调，HiRes 歌曲自动使用更大缓冲）
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Memory, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Text("音频缓冲大小", style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    var sliderValue by remember { mutableFloatStateOf(audioBufferSize.toFloat()) }
+                    LaunchedEffect(audioBufferSize) { sliderValue = audioBufferSize.toFloat() }
+                    Slider(
+                        value = sliderValue,
+                        onValueChange = { sliderValue = it },
+                        onValueChangeFinished = { viewModel.setAudioBufferSize(sliderValue.toInt()) },
+                        valueRange = 128f..1024f,
+                        steps = 6,
+                        modifier = Modifier.width(140.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
+                    Text("${audioBufferSize}KB", style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 8.dp))
+                }
+                Text(
+                    text = "Hi-Res 歌曲自动使用 2 倍预缓冲，缓解 NAS 大文件串流卡顿",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 )
-                SettingsItem(
-                    icon = Icons.Default.Memory,
-                    title = "缓冲大小",
-                    subtitle = "256 KB",
-                    onClick = { },
-                )
+                // 当前输出设备与格式
+                AudioOutputInfo()
             }
         }
 
@@ -208,6 +304,18 @@ fun SettingsScreen(
                     title = "开源许可",
                     subtitle = "",
                     onClick = { },
+                )
+            }
+        }
+
+        // 引导
+        item {
+            SettingsSection(title = "引导") {
+                SettingsItem(
+                    icon = Icons.Default.TipsAndUpdates,
+                    title = "重新查看引导",
+                    subtitle = "再次展示首次使用引导",
+                    onClick = { appViewModel.resetOnboarding() },
                 )
             }
         }
@@ -325,5 +433,64 @@ private fun SettingsItem(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp),
         )
+    }
+}
+
+/** 当前音频输出设备与格式展示（经 AudioManager/AudioTrack 查询） */
+@Composable
+private fun AudioOutputInfo() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var deviceName by remember { mutableStateOf("查询中...") }
+    var formatInfo by remember { mutableStateOf("查询中...") }
+
+    LaunchedEffect(Unit) {
+        runCatching {
+            val am = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+            // 输出设备
+            val devices = am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
+            val active = devices.firstOrNull { it.isSink && it.type != android.media.AudioDeviceInfo.TYPE_TELEPHONY }
+                ?: devices.firstOrNull()
+            val deviceLabel = when (active?.type) {
+                android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "扬声器"
+                android.media.AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "听筒"
+                android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES, android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET -> "有线耳机"
+                android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> "蓝牙耳机"
+                android.media.AudioDeviceInfo.TYPE_USB_DEVICE -> "USB 音频设备"
+                else -> active?.productName?.toString() ?: "未知"
+            }
+            // 输出采样率/格式（默认 44100Hz 16bit，蓝牙/HD 设备可能有差异）
+            val sampleRate = am.getProperty(android.media.AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 44100
+            val frameCount = am.getProperty(android.media.AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER)?.toIntOrNull() ?: 0
+            val fmt = if (frameCount > 0) "${sampleRate}Hz · ${frameCount}frames" else "${sampleRate}Hz"
+            deviceName to fmt
+        }.onSuccess {
+            deviceName = it.first
+            formatInfo = it.second
+        }.onFailure {
+            deviceName = "无法获取"
+            formatInfo = ""
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Icon(Icons.Default.GraphicEq, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "当前输出",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = if (formatInfo.isEmpty()) deviceName else "$deviceName · $formatInfo",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

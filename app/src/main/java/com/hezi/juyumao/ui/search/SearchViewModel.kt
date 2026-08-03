@@ -7,6 +7,7 @@ import com.hezi.juyumao.data.repository.MusicRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -27,5 +28,11 @@ class SearchViewModel @Inject constructor(
 
     fun search(query: String) {
         searchQuery.value = query
+    }
+
+    fun toggleFavorite(song: SongEntity) {
+        viewModelScope.launch {
+            repository.toggleFavorite(song.id, !song.isFavorite)
+        }
     }
 }

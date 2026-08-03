@@ -1,6 +1,5 @@
 package com.hezi.juyumao.ui.player.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
@@ -63,20 +62,22 @@ private fun BottomFuncButton(
     isActive: Boolean = false,
     onClick: () -> Unit,
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier.clickable(onClick = onClick).padding(8.dp),
-    ) {
-        Icon(
-            icon, label,
-            tint = if (isActive) Color.White else Color.White.copy(alpha = 0.6f),
-            modifier = Modifier.size(22.dp),
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (isActive) Color.White else Color.White.copy(alpha = 0.6f),
-        )
+    com.hezi.juyumao.ui.components.AnimatedIconButton(onClick = onClick) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.padding(8.dp),
+        ) {
+            Icon(
+                icon, label,
+                tint = if (isActive) Color.White else Color.White.copy(alpha = 0.6f),
+                modifier = Modifier.size(22.dp),
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isActive) Color.White else Color.White.copy(alpha = 0.6f),
+            )
+        }
     }
 }

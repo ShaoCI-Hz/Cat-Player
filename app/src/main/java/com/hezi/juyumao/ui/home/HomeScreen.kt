@@ -38,6 +38,9 @@ fun HomeScreen(
     onNavigateToSmb: () -> Unit = {},
     onNavigateToEqualizer: () -> Unit = {},
     onNavigateToQueue: () -> Unit = {},
+    onNavigateToPlaylist: () -> Unit = {},
+    onNavigateToStatistics: () -> Unit = {},
+    onPlayAll: (List<SongEntity>) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -67,7 +70,7 @@ fun HomeScreen(
                 StatCard(Icons.Default.MusicNote, "${uiState.songCount}", "歌曲", Modifier.weight(1f))
                 StatCard(Icons.Default.Album, "${uiState.albumCount}", "专辑", Modifier.weight(1f))
                 StatCard(Icons.Default.Person, "${uiState.artistCount}", "艺术家", Modifier.weight(1f))
-                StatCard(Icons.Default.Storage, FormatUtils.formatFileSize(uiState.totalSize), "容量", Modifier.weight(1f))
+                StatCard(Icons.Default.PlayCircle, "${uiState.playCount}", "播放", Modifier.weight(1f))
             }
         }
 
@@ -135,6 +138,13 @@ fun HomeScreen(
                 QuickActionCard(Icons.Default.Equalizer, "均衡器", onNavigateToEqualizer, Modifier.weight(1f))
                 QuickActionCard(Icons.Default.Timer, "定时关闭", { showSleepTimer = true }, Modifier.weight(1f))
                 QuickActionCard(Icons.AutoMirrored.Filled.QueueMusic, "播放队列", onNavigateToQueue, Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                QuickActionCard(Icons.Default.QueueMusic, "歌单", onNavigateToPlaylist, Modifier.weight(1f))
+                QuickActionCard(Icons.Default.BarChart, "听歌报告", onNavigateToStatistics, Modifier.weight(1f))
+                QuickActionCard(Icons.Default.Storage, "缓存管理", { }, Modifier.weight(1f))
             }
         }
 

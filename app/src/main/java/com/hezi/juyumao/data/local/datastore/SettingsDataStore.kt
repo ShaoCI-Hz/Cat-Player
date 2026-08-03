@@ -20,6 +20,10 @@ class SettingsDataStore(private val context: Context) {
         private val LYRICS_FONT_SIZE = floatPreferencesKey("lyrics_font_size")
         private val LYRICS_FONT_BOLD = booleanPreferencesKey("lyrics_font_bold")
         private val CACHE_THREADS = intPreferencesKey("cache_threads")
+        private val PLAYBACK_SPEED = floatPreferencesKey("playback_speed")
+        private val CROSSFADE_DURATION = intPreferencesKey("crossfade_duration")
+        private val SPECTRUM_VISUALIZER = booleanPreferencesKey("spectrum_visualizer")
+        private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "dark" }
@@ -30,6 +34,10 @@ class SettingsDataStore(private val context: Context) {
     val lyricsFontSize: Flow<Float> = context.dataStore.data.map { it[LYRICS_FONT_SIZE] ?: 18f }
     val lyricsFontBold: Flow<Boolean> = context.dataStore.data.map { it[LYRICS_FONT_BOLD] ?: true }
     val cacheThreads: Flow<Int> = context.dataStore.data.map { it[CACHE_THREADS] ?: 4 }
+    val playbackSpeed: Flow<Float> = context.dataStore.data.map { it[PLAYBACK_SPEED] ?: 1.0f }
+    val crossfadeDuration: Flow<Int> = context.dataStore.data.map { it[CROSSFADE_DURATION] ?: 0 }
+    val spectrumVisualizer: Flow<Boolean> = context.dataStore.data.map { it[SPECTRUM_VISUALIZER] ?: true }
+    val onboardingCompleted: Flow<Boolean> = context.dataStore.data.map { it[ONBOARDING_COMPLETED] ?: false }
 
     suspend fun setThemeMode(mode: String) {
         context.dataStore.edit { it[THEME_MODE] = mode }
@@ -61,5 +69,21 @@ class SettingsDataStore(private val context: Context) {
 
     suspend fun setCacheThreads(threads: Int) {
         context.dataStore.edit { it[CACHE_THREADS] = threads }
+    }
+
+    suspend fun setPlaybackSpeed(speed: Float) {
+        context.dataStore.edit { it[PLAYBACK_SPEED] = speed }
+    }
+
+    suspend fun setCrossfadeDuration(ms: Int) {
+        context.dataStore.edit { it[CROSSFADE_DURATION] = ms }
+    }
+
+    suspend fun setSpectrumVisualizer(enabled: Boolean) {
+        context.dataStore.edit { it[SPECTRUM_VISUALIZER] = enabled }
+    }
+
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        context.dataStore.edit { it[ONBOARDING_COMPLETED] = completed }
     }
 }

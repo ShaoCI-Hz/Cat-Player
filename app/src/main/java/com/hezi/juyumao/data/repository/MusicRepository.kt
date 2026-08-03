@@ -33,6 +33,19 @@ class MusicRepository @Inject constructor(
 
     fun getArtistCount() = songDao.getArtistCount()
 
+    fun getFavorites() = songDao.getFavorites()
+
+    suspend fun toggleFavorite(songId: Long, isFavorite: Boolean) =
+        songDao.updateFavorite(songId, isFavorite)
+
+    // ── 播放统计（T10.10） ──
+
+    fun getTotalPlayCount() = songDao.getTotalPlayCount()
+
+    fun getTopPlayedSongs(limit: Int) = songDao.getTopPlayedSongs(limit)
+
+    fun getSongsPlayedSince(since: Long) = songDao.getSongsPlayedSince(since)
+
     suspend fun scanSmbDirectory(smbClient: SmbClientWrapper, path: String, serverId: Long): Result<Int> {
         val result = smbScanner.scanDirectory(smbClient, path, serverId)
         return result.map { songs ->

@@ -6,20 +6,23 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.hezi.juyumao.data.local.db.dao.PlaylistDao
 import com.hezi.juyumao.data.local.db.dao.ServerDao
 import com.hezi.juyumao.data.local.db.dao.SongDao
 import com.hezi.juyumao.data.local.db.entity.PlaylistEntity
+import com.hezi.juyumao.data.local.db.entity.PlaylistSongEntity
 import com.hezi.juyumao.data.local.db.entity.ServerEntity
 import com.hezi.juyumao.data.local.db.entity.SongEntity
 
 @Database(
-    entities = [SongEntity::class, ServerEntity::class, PlaylistEntity::class],
-    version = 2,
+    entities = [SongEntity::class, ServerEntity::class, PlaylistEntity::class, PlaylistSongEntity::class],
+    version = 3,
     exportSchema = false,
 )
 abstract class JuYuMaoDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun serverDao(): ServerDao
+    abstract fun playlistDao(): PlaylistDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -42,13 +45,30 @@ abstract class JuYuMaoDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 歌单歌曲关联表（playlists 表已存在于 v1 起的 schema）
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS playlist_songs (" +
+                        "playlistId INTEGER NOT NULL, " +
+                        "songId INTEGER NOT NULL, " +
+                        "PRIMARY KEY(playlistId, songId), " +
+                        "FOREIGN KEY(playlistId) REFERENCES playlists(id) ON DELETE CASCADE, " +
+                        "FOREIGN KEY(songId) REFERENCES songs(id) ON DELETE CASCADE" +
+                        ")"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_playlist_songs_songId ON playlist_songs(songId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_playlist_songs_playlistId ON playlist_songs(playlistId)")
+            }
+        }
+
         fun create(context: Context): JuYuMaoDatabase {
             return Room.databaseBuilder(
                 context,
                 JuYuMaoDatabase::class.java,
                 "juyumao.db",
             )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 // 注意：不要使用 fallbackToDestructiveMigration()，它会在 schema 变更时静默销毁用户数据
                 // 新增版本时必须提供 Migration
                 .build()

@@ -1,5 +1,7 @@
 package com.hezi.juyumao.data.remote.smb
 
+import com.hezi.juyumao.data.local.metadata.HiRes
+
 /**
  * 音频文件过滤公共工具类
  * 本地扫描和 SMB 扫描共用同一套过滤规则
@@ -11,9 +13,6 @@ object AudioFileFilter {
         "mp3", "aac", "m4a", "ogg", "opus", "wma", "wav", "flac",
         "dsf", "dff", "ape", "wv", "aiff", "aif",
     )
-
-    // Hi-Res 格式扩展名
-    private val HIRES_EXTENSIONS = setOf("dsf", "dff", "ape", "wv", "aiff", "aif", "flac")
 
     // 排除的目录关键词
     private val EXCLUDED_DIR_PATTERNS = listOf(
@@ -48,11 +47,11 @@ object AudioFileFilter {
         return EXCLUDED_FILENAME_KEYWORDS.any { lower.contains(it.lowercase()) }
     }
 
-    /** 判断是否 Hi-Res 格式 */
-    fun isHiRes(fileName: String): Boolean {
-        val ext = fileName.substringAfterLast('.', "").lowercase()
-        return ext in HIRES_EXTENSIONS
-    }
+    /**
+     * 判断是否 Hi-Res（SMB 扫描无采样率/位深信息，只能按 DSD 扩展名判定；
+     * 元数据批量缓存后由 MetadataRepository 用完整信息刷新 isHiRes）
+     */
+    fun isHiRes(fileName: String): Boolean = HiRes.isHiRes(fileExtension = fileName)
 
     /** 从文件名提取标题（去掉扩展名） */
     fun extractTitle(fileName: String): String {

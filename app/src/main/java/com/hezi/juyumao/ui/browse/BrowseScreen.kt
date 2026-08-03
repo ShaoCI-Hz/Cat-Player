@@ -26,15 +26,26 @@ fun BrowseScreen(
     viewModel: BrowseViewModel = hiltViewModel(),
 ) {
     val allSongs by viewModel.allSongs.collectAsStateWithLifecycle()
+    val favorites by viewModel.favorites.collectAsStateWithLifecycle()
+    val albumNames by viewModel.albumNames.collectAsStateWithLifecycle()
+    val artistNames by viewModel.artistNames.collectAsStateWithLifecycle()
+    val genreNames by viewModel.genreNames.collectAsStateWithLifecycle()
+    val dimensionSongs by viewModel.dimensionSongs.collectAsStateWithLifecycle()
     val batchState by viewModel.batchCacheState.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("全部", "本地", "NAS")
+    val tabs = listOf("全部", "本地", "NAS", "我喜欢", "维度")
+
+    // 维度浏览状态：-1=维度列表，否则为选中维度对应的歌曲列表
+    var dimensionType by remember { mutableStateOf("album") }
+    var dimensionName by remember { mutableStateOf<String?>(null) }
 
     val filteredSongs by remember {
         derivedStateOf {
             when (selectedTab) {
                 1 -> allSongs.filter { it.source == "LOCAL" }
                 2 -> allSongs.filter { it.source == "SMB" }
+                3 -> favorites
+                4 -> dimensionSongs
                 else -> allSongs
             }
         }
@@ -42,6 +53,7 @@ fun BrowseScreen(
 
     val localCount by remember { derivedStateOf { allSongs.count { it.source == "LOCAL" } } }
     val smbCount by remember { derivedStateOf { allSongs.count { it.source == "SMB" } } }
+    val favoriteCount by remember { derivedStateOf { favorites.size } }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Spacer(modifier = Modifier.height(48.dp))
@@ -72,6 +84,7 @@ fun BrowseScreen(
                         0 -> "$tab (${allSongs.size})"
                         1 -> "$tab ($localCount)"
                         2 -> "$tab ($smbCount)"
+                        3 -> "$tab ($favoriteCount)"
                         else -> tab
                     },
                         )
@@ -114,7 +127,27 @@ fun BrowseScreen(
             }
         }
 
-        if (filteredSongs.isEmpty()) {
+        // 维度浏览（专辑/艺术家/流派）
+        if (selectedTab == 4) {
+            DimensionBrowse(
+                albumNames = albumNames,
+                artistNames = artistNames,
+                genreNames = genreNames,
+                dimensionSongs = dimensionSongs,
+                dimensionType = dimensionType,
+                dimensionName = dimensionName,
+                onTypeChange = { type ->
+                    dimensionType = type
+                    dimensionName = null
+                },
+                onSelectDimension = { name ->
+                    dimensionName = name
+                    viewModel.loadDimensionSongs(dimensionType, name)
+                },
+                onBackToList = { dimensionName = null },
+                onSongClick = onSongClick,
+            )
+        } else if (filteredSongs.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
@@ -150,6 +183,7 @@ fun BrowseScreen(
                         song = song,
                         onClick = { onSongClick(song.id) },
                         onEnsureArtwork = { viewModel.ensureArtwork(song) },
+                        onToggleFavorite = { viewModel.toggleFavorite(song) },
                         isProcessing = batchState.isRunning && batchState.currentSongId == song.id,
                     )
                 }
@@ -163,6 +197,7 @@ private fun SongListItem(
     song: SongEntity,
     onClick: () -> Unit,
     onEnsureArtwork: () -> Unit = {},
+    onToggleFavorite: () -> Unit = {},
     isProcessing: Boolean = false,
 ) {
     // 列表项显示时按需提取 NAS 封面
@@ -209,13 +244,24 @@ private fun SongListItem(
 
         // 歌曲信息
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = song.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                // Hi-Res / DSD 徽标（金色）
+                if (song.isHiRes) {
+                    val isDsd = song.filePath.substringAfterLast('.', "").lowercase() in setOf("dsf", "dff")
+                    HiResBadge(text = if (isDsd) "DSD" else "Hi-Res")
+                }
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -258,11 +304,23 @@ private fun SongListItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
-            Text(
-                text = formatDuration(song.duration),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = formatDuration(song.duration),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // 收藏按钮
+                IconButton(onClick = onToggleFavorite, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        imageVector = if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (song.isFavorite) "取消收藏" else "收藏",
+                        tint = if (song.isFavorite) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -273,4 +331,167 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%d:%02d".format(minutes, seconds)
+}
+
+/** 金色 Hi-Res / DSD 徽标 */
+@Composable
+private fun HiResBadge(text: String) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = com.hezi.juyumao.ui.theme.LocalExtendedColors.current.hiResGold.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(4.dp),
+            )
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = com.hezi.juyumao.ui.theme.LocalExtendedColors.current.hiResGold,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+/** 维度浏览：专辑/艺术家/流派 三级（列表 → 详情歌曲） */
+@Composable
+private fun DimensionBrowse(
+    albumNames: List<String>,
+    artistNames: List<String>,
+    genreNames: List<String>,
+    dimensionSongs: List<SongEntity>,
+    dimensionType: String,
+    dimensionName: String?,
+    onTypeChange: (String) -> Unit,
+    onSelectDimension: (String) -> Unit,
+    onBackToList: () -> Unit,
+    onSongClick: (Long) -> Unit,
+) {
+    // 维度类型切换
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        listOf("album" to "专辑", "artist" to "艺术家", "genre" to "流派").forEach { (type, label) ->
+            FilterChip(
+                selected = dimensionType == type,
+                onClick = { onTypeChange(type) },
+                label = { Text(label) },
+            )
+        }
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    if (dimensionName == null) {
+        // 维度名称列表
+        val names = when (dimensionType) {
+            "artist" -> artistNames
+            "genre" -> genreNames
+            else -> albumNames
+        }
+        if (names.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("暂无数据", style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 160.dp)) {
+                items(names, key = { it }) { name ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelectDimension(name) }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Icon(
+                            imageVector = when (dimensionType) {
+                                "artist" -> Icons.Default.Person
+                                "genre" -> Icons.Default.MusicNote
+                                else -> Icons.Default.Album
+                            },
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Text(name, style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                        Icon(Icons.Default.KeyboardArrowRight, null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+        }
+    } else {
+        // 维度歌曲列表
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                IconButton(onClick = onBackToList) {
+                    Icon(Icons.Default.ArrowBack, "返回")
+                }
+                Text(
+                    text = dimensionName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Text("${dimensionSongs.size} 首", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (dimensionSongs.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("暂无歌曲", style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 160.dp)) {
+                    items(dimensionSongs, key = { it.id }) { song ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSongClick(song.id) }
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            if (!song.albumArtUri.isNullOrEmpty()) {
+                                coil.compose.AsyncImage(
+                                    model = java.io.File(song.albumArtUri),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(6.dp)),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                )
+                            } else {
+                                Icon(Icons.Default.MusicNote, null,
+                                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(song.title, style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface, maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis)
+                                Text(song.artist, style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis)
+                            }
+                            Text(
+                                text = formatDuration(song.duration),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

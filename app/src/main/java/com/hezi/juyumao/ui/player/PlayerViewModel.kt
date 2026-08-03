@@ -14,6 +14,7 @@ import com.hezi.juyumao.player.MusicPlayerService
 import com.hezi.juyumao.player.PlaybackController
 import com.hezi.juyumao.player.PlaybackStateHolder
 import com.hezi.juyumao.player.audio.LyricsData
+import com.hezi.juyumao.player.audio.SpectrumAnalyzer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -32,6 +33,7 @@ class PlayerViewModel @Inject constructor(
     private val playbackStateHolder: PlaybackStateHolder,
     private val playbackController: PlaybackController,
     private val settingsRepository: SettingsRepository,
+    private val spectrumAnalyzer: SpectrumAnalyzer,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -44,6 +46,10 @@ class PlayerViewModel @Inject constructor(
     private val _lyrics = MutableStateFlow<LyricsData?>(null)
     val lyrics: StateFlow<LyricsData?> = _lyrics
 
+    /** 当前歌曲收藏状态（持久化到数据库） */
+    private val _isFavorite = MutableStateFlow(false)
+    val isFavorite: StateFlow<Boolean> = _isFavorite
+
     // 直接从 PlaybackStateHolder 读取，由其内部轮询驱动更新
     val isPlaying: StateFlow<Boolean> = playbackStateHolder.isPlaying
     val position: StateFlow<Long> = playbackStateHolder.position
@@ -54,35 +60,28 @@ class PlayerViewModel @Inject constructor(
     val lyricsFontBold: StateFlow<Boolean> = settingsRepository.lyricsFontBold
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    /** 频谱可视化开关（T11.4） */
+    val spectrumEnabled: StateFlow<Boolean> = settingsRepository.spectrumVisualizer
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    /** 频谱数据（由 SpectrumAnalyzer 采集） */
+    val spectrum: StateFlow<FloatArray> = spectrumAnalyzer.spectrum
+
     private var loadJob: Job? = null
-    private var playCountIncremented = false
 
     init {
         val songId = savedStateHandle.get<Long>("songId")
         if (songId != null && songId > 0) {
             loadSong(songId)
         }
-        // 监听播放状态，首次播放时递增 playCount
-        viewModelScope.launch {
-            playbackStateHolder.isPlaying.collect { playing ->
-                if (playing && !playCountIncremented) {
-                    playCountIncremented = true
-                    _currentSong.value?.let { song ->
-                        songDao.update(song.copy(
-                            playCount = song.playCount + 1,
-                            lastPlayedAt = System.currentTimeMillis(),
-                        ))
-                    }
-                }
-            }
-        }
+        // 播放统计由 PlaybackController.onMediaItemTransition 统一埋点（T10.9），此处不再重复
     }
 
     fun loadSong(songId: Long) {
         loadJob?.cancel()
-        playCountIncremented = false
         loadJob = viewModelScope.launch {
             var song = songDao.getById(songId) ?: return@launch
+            _isFavorite.value = song.isFavorite
 
             // 判断是否已加载同一首歌且播放器有内容 —— 是则不重播，只刷新 UI
             val current = playbackStateHolder.currentSong.value
@@ -120,6 +119,22 @@ class PlayerViewModel @Inject constructor(
             if (!alreadyPlayingThis) {
                 playbackController.loadPlaylist(listOf(enriched), 0)
 
+                // 频谱采集：等待 audioSessionId 就绪后绑定
+                viewModelScope.launch {
+                    val enabled = spectrumEnabled.value
+                    val player = playbackStateHolder.getExoPlayer()
+                    if (player != null) {
+                        // prepare 后 audioSessionId 才有效，轮询等待
+                        repeat(50) {
+                            if (player.audioSessionId != androidx.media3.common.C.AUDIO_SESSION_ID_UNSET) {
+                                spectrumAnalyzer.start(player.audioSessionId, enabled)
+                                return@launch
+                            }
+                            kotlinx.coroutines.delay(100)
+                        }
+                    }
+                }
+
                 // 启动通知栏服务
                 try {
                     val intent = Intent(context, MusicPlayerService::class.java)
@@ -151,5 +166,25 @@ class PlayerViewModel @Inject constructor(
 
     fun setRepeat(modeIndex: Int) {
         playbackController.setRepeat(modeIndex)
+    }
+
+    /** 切换收藏状态并持久化（列表/播放页/我喜欢三处共用） */
+    fun toggleFavorite() {
+        val songId = _currentSong.value?.id ?: return
+        viewModelScope.launch {
+            val newValue = !_isFavorite.value
+            songDao.updateFavorite(songId, newValue)
+            _isFavorite.value = newValue
+        }
+    }
+
+    /** 设置播放倍速（持久化，重启保留） */
+    fun setPlaybackSpeed(speed: Float) {
+        playbackController.setPlaybackSpeed(speed)
+    }
+
+    override fun onCleared() {
+        spectrumAnalyzer.stop()
+        super.onCleared()
     }
 }

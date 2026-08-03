@@ -46,6 +46,10 @@ interface SongDao {
     @Query("UPDATE songs SET isFavorite = :isFavorite WHERE id = :id")
     suspend fun updateFavorite(id: Long, isFavorite: Boolean)
 
+    /** 播放统计埋点：递增播放次数并更新时间戳（T10.9） */
+    @Query("UPDATE songs SET playCount = playCount + 1, lastPlayedAt = :now WHERE id = :id")
+    suspend fun incrementPlayCount(id: Long, now: Long = System.currentTimeMillis())
+
     @Query("SELECT * FROM songs WHERE isFavorite = 1 ORDER BY addedAt DESC")
     fun getFavorites(): Flow<List<SongEntity>>
 
@@ -71,4 +75,42 @@ interface SongDao {
 
     @Query("DELETE FROM songs WHERE source = :source")
     suspend fun deleteBySource(source: String)
+
+    // ── 专辑/艺术家/流派浏览（T10.8） ──
+
+    @Query("SELECT * FROM songs WHERE album = :album ORDER BY trackNumber ASC, title ASC")
+    fun getSongsByAlbum(album: String): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs WHERE artist = :artist ORDER BY album ASC, trackNumber ASC")
+    fun getSongsByArtist(artist: String): Flow<List<SongEntity>>
+
+    @Query("SELECT * FROM songs WHERE genre = :genre ORDER BY title ASC")
+    fun getSongsByGenre(genre: String): Flow<List<SongEntity>>
+
+    @Query("SELECT DISTINCT album FROM songs WHERE album != :unknown ORDER BY album ASC")
+    fun getAlbumNames(unknown: String = SongEntity.UNKNOWN_ALBUM): Flow<List<String>>
+
+    @Query("SELECT DISTINCT artist FROM songs WHERE artist != :unknown ORDER BY artist ASC")
+    fun getArtistNames(unknown: String = SongEntity.UNKNOWN_ARTIST): Flow<List<String>>
+
+    @Query("SELECT DISTINCT genre FROM songs WHERE genre IS NOT NULL AND genre != '' ORDER BY genre ASC")
+    fun getGenreNames(): Flow<List<String>>
+
+    // ── 播放统计（T10.10） ──
+
+    /** 总播放次数 */
+    @Query("SELECT COALESCE(SUM(playCount), 0) FROM songs")
+    fun getTotalPlayCount(): Flow<Long>
+
+    /** 播放过的歌曲（按播放次数降序，用于 TOP 榜） */
+    @Query("SELECT * FROM songs WHERE playCount > 0 ORDER BY playCount DESC, lastPlayedAt DESC LIMIT :limit")
+    fun getTopPlayedSongs(limit: Int): Flow<List<SongEntity>>
+
+    /** 最近 7 天播放过的歌曲（周报） */
+    @Query("SELECT * FROM songs WHERE lastPlayedAt >= :since AND lastPlayedAt > 0 ORDER BY lastPlayedAt DESC")
+    fun getSongsPlayedSince(since: Long): Flow<List<SongEntity>>
+
+    /** 今日播放次数（首页卡片） */
+    @Query("SELECT COUNT(*) FROM songs WHERE lastPlayedAt >= :dayStart AND lastPlayedAt > 0")
+    fun getTodayPlayCount(dayStart: Long): Flow<Int>
 }
